@@ -124,6 +124,9 @@ String run(const String &line) {
   sscanf(arg.c_str(), "%ld %ld %ld", &a, &b, &c);
 
   if (cmd == "ping") return "ok";
+#if ABS_POINTER && HID_TRACE
+  if (cmd == "hidtrace") { mouse.traceDump(); return "ok"; }
+#endif
 #if ABS_POINTER
   if (cmd == "move" || cmd == "flick") {  // emulated on the absolute mouse; never further than across the screen
     a = constrain(a, -AbsMouse::MAX_MOVE, AbsMouse::MAX_MOVE);

@@ -1,8 +1,14 @@
-// An absolute mouse (ABS_POINTER builds): the same calls as USBHIDMouse, plus moveTo(). iOS maps X/Y straight to
-// screen fractions while AssistiveTouch is on, so no homing or calibration. It ignores X/Y in a report that changes
-// a button: move in one report, wait, then press (spikes/abs-touch/README.md).
+// Absolute mouse (ABS_POINTER builds), with independent position, button and scroll reports.
+// The default mouse layout is adapted from our Windows BLE HID project:
+// Copyright (c) 2026 jglwiz. MIT licensed (see LICENSE).
+// Keep position separate from clicks: press/release must not resend cached X/Y.
 #pragma once
 #include "USBHID.h"
+
+// Retain the upstream combined layout only for controlled compatibility comparisons.
+#ifndef HID_BLE_LAYOUT
+#define HID_BLE_LAYOUT 1
+#endif
 
 class AbsMouse : public USBHIDDevice {
 public:
@@ -43,9 +49,23 @@ public:
     if (dx || dy) moveTo(x_ + dx * MOVE_SCALE, y_ + dy * MOVE_SCALE);
     if (wheel) send(wheel);
   }
-  void press(uint8_t b) { buttons_ |= b; send(0); }
-  void release(uint8_t b) { buttons_ &= ~b; send(0); }
+  void press(uint8_t b) { buttons_ |= b; sendButtons(); }
+  void release(uint8_t b) { buttons_ &= ~b; sendButtons(); }
   bool held() const { return buttons_; }
+
+#if HID_TRACE
+  // Diagnostic ring: record in RAM; print only on demand, outside click timing.
+  void traceDump() {
+    uint32_t first = traceCount_ > 16 ? traceCount_ - 16 : 0;
+    for (uint32_t i = first; i < traceCount_; ++i) {
+      const Trace &t = trace_[i % 16];
+      Serial.printf("hidtrace seq=%lu start_us=%lu end_us=%lu buttons=%u x=%u y=%u wheel=%d ok=%u report=%u len=%u\n",
+                    (unsigned long)i, (unsigned long)t.start, (unsigned long)t.end,
+                    t.buttons, t.x, t.y, t.wheel, t.ok, t.report, t.length);
+    }
+    Serial.printf("hidtrace count=%lu held=%u\n", (unsigned long)traceCount_, buttons_);
+  }
+#endif
 
   uint16_t _onGetDescriptor(uint8_t *buffer) override {
     memcpy(buffer, DESCRIPTOR, sizeof DESCRIPTOR);
@@ -55,6 +75,27 @@ public:
 private:
   static const uint8_t REPORT_ID = 10;  // USBHID.h takes 1-6
   static constexpr uint8_t DESCRIPTOR[] = {
+#if HID_BLE_LAYOUT
+    // Match our BLE mouse map; remap IDs to avoid USB consumer-control ID 4.
+    // Scroll-only collection: padding, zero relative X/Y, wheel.
+    0x05,0x01, 0x09,0x02, 0xA1,0x01, 0x85,12,
+    0x09,0x01, 0xA1,0x00,
+    0x75,0x08, 0x95,0x01, 0x81,0x01,
+    0x05,0x01, 0x09,0x30, 0x09,0x31, 0x09,0x38,
+    0x15,0x81, 0x25,0x7F, 0x75,0x08, 0x95,0x03, 0x81,0x06,
+    0xC0,0xC0,
+    // Absolute position and the sole button state, in independent reports.
+    0x05,0x01, 0x09,0x02, 0xA1,0x01, 0x85,REPORT_ID,
+    0x09,0x01, 0xA1,0x00,
+    0x75,0x08, 0x95,0x01, 0x81,0x01,
+    0x05,0x01, 0x09,0x30, 0x09,0x31,
+    0x15,0x00, 0x26,0xFF,0x7F, 0x75,0x10, 0x95,0x02, 0x81,0x02,
+    0x85,11,
+    0x05,0x09, 0x19,0x01, 0x29,0x03, 0x15,0x00, 0x25,0x01,
+    0x75,0x01, 0x95,0x03, 0x81,0x02,
+    0x75,0x05, 0x95,0x01, 0x81,0x01,
+    0xC0,0xC0,
+#else
     0x05, 0x01, 0x09, 0x02, 0xA1, 0x01,  // Generic Desktop, Mouse, Application
     0x85, REPORT_ID,
     0x09, 0x01, 0xA1, 0x00,              //   Pointer, Physical
@@ -65,12 +106,48 @@ private:
     0x15, 0x00, 0x26, 0xFF, 0x7F, 0x35, 0x00, 0x46, 0xFF, 0x7F, 0x75, 0x10, 0x95, 0x02, 0x81, 0x02,
     0x09, 0x38, 0x15, 0x81, 0x25, 0x7F, 0x35, 0x00, 0x45, 0x00, 0x75, 0x08, 0x95, 0x01, 0x81, 0x06,  // Wheel
     0xC0, 0xC0,
+#endif
   };
 
   void send(int8_t wheel) {
+#if HID_BLE_LAYOUT
+    if (wheel) {
+      uint8_t r[] = {0, 0, 0, (uint8_t)wheel};
+      transmit(12, r, sizeof r, wheel);
+    } else {
+      uint8_t r[] = {0, (uint8_t)x_, (uint8_t)(x_ >> 8), (uint8_t)y_, (uint8_t)(y_ >> 8)};
+      transmit(REPORT_ID, r, sizeof r, 0);
+    }
+#else
     uint8_t r[6] = {buttons_, (uint8_t)x_, (uint8_t)(x_ >> 8), (uint8_t)y_, (uint8_t)(y_ >> 8), (uint8_t)wheel};
-    hid.SendReport(REPORT_ID, r, sizeof r);
+    transmit(REPORT_ID, r, sizeof r, wheel);
+#endif
   }
+
+  void sendButtons() {
+#if HID_BLE_LAYOUT
+    uint8_t r[] = {buttons_};
+    transmit(11, r, sizeof r, 0);
+#else
+    send(0);
+#endif
+  }
+
+  void transmit(uint8_t report, const void *data, size_t length, int8_t wheel) {
+#if HID_TRACE
+    uint32_t start = micros();
+    bool ok = hid.SendReport(report, data, length);
+    trace_[traceCount_++ % 16] = {start, micros(), x_, y_, buttons_, wheel, ok, report, (uint8_t)length};
+#else
+    hid.SendReport(report, data, length);
+#endif
+  }
+
+#if HID_TRACE
+  struct Trace { uint32_t start, end; uint16_t x, y; uint8_t buttons; int8_t wheel; bool ok; uint8_t report, length; };
+  Trace trace_[16] = {};
+  uint32_t traceCount_ = 0;
+#endif
 
   USBHID hid;
   uint8_t buttons_ = 0;
