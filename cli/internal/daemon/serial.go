@@ -20,6 +20,13 @@ type commandLink interface {
 func (s *Server) serialConn(ctx context.Context, selector string) (*Conn, error) {
 	s.linkMu.Lock()
 	defer s.linkMu.Unlock()
+	output := os.Getenv("ESP32AGENT_HID_OUTPUT")
+	if output == "" {
+		output = "usb"
+	}
+	if output != "usb" && output != "ble" {
+		return nil, errors.New("ESP32AGENT_HID_OUTPUT must be usb or ble")
+	}
 	port := selector
 	if port == "" {
 		port = os.Getenv("ESP32AGENT_PORT")
@@ -58,6 +65,24 @@ func (s *Server) serialConn(ctx context.Context, selector string) (*Conn, error)
 		l.Close()
 		return nil, err
 	}
+	if c.status["hid_output"] != output || c.status["output_select"] == true {
+		if c.status["output_select"] != true {
+			l.Close()
+			return nil, errors.New("firmware does not support selecting BLE HID output")
+		}
+		if _, err = l.Send(ctx, "output "+output); err == nil {
+			err = c.refreshSerial(ctx)
+		}
+		if err != nil || c.status["hid_output"] != output {
+			l.Close()
+			return nil, fmt.Errorf("select %s HID output: %w", output, errors.Join(err, errors.New("output selection not confirmed")))
+		}
+	}
+	c.hidOutput = output
+	c.bleEpochSeen = output == "ble" && serialReady(c.status) == nil
+	if name, ok := c.status["name"].(string); ok && name != "" {
+		c.Name = name
+	}
 	c.frameStop = make(chan struct{})
 	go c.pollFrames()
 	s.mu.Lock()
@@ -77,16 +102,48 @@ func (c *Conn) refreshSerial(ctx context.Context) error {
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if old, ok := c.status["up"].(float64); ok && num(st["up"]) < old {
+	if st["hid_output"] == nil {
+		st["hid_output"] = "usb"
+	} // Original USB-only firmware.
+	if st["hid_output"] != "usb" && st["hid_output"] != "ble" {
+		return errors.New("unknown firmware HID output")
+	}
+	for _, key := range []string{"device_id", "boot_id"} {
+		if old := c.status[key]; old != nil && old != st[key] {
+			c.serialFault = fmt.Errorf("board %s changed; input outcome unknown; restart daemon after inspection", key)
+		}
+	}
+	if old, ok := c.status["up"].(float64); ok && st["boot_id"] == nil && num(st["up"]) < old {
 		c.serialFault = errors.New("board rebooted; input outcome unknown; restart daemon after inspection")
 	}
+	if c.hidOutput != "" && st["hid_output"] != c.hidOutput {
+		c.serialFault = errors.New("HID output changed outside daemon; restart daemon after inspection")
+	}
+	if c.hidOutput == "ble" {
+		if c.bleEpochSeen && (st["connection_generation"] != c.status["connection_generation"] || st["fault"] == true) {
+			c.serialFault = errors.New("BLE connection changed or report failed; outcome unknown; restart daemon after inspection")
+		}
+		if serialReady(st) == nil {
+			c.bleEpochSeen = true
+		}
+	}
 	st["control_transport"] = "serial"
-	st["hid_output"] = "usb"
 	st["port"] = c.ID
 	st["screen_source"] = "http"
 	c.status = st
 	c.statusAt = time.Now()
 	return c.serialFault
+}
+
+func serialReady(st map[string]any) error {
+	if st["hid_output"] == "ble" {
+		if st["ble_ready"] != true || st["ble_connected"] != true || st["ble_encrypted"] != true || st["ready"] != true || st["fault"] == true {
+			return errors.New("phone BLE HID is not ready; no USB fallback")
+		}
+	} else if st["usb"] != "ok" {
+		return errors.New("phone USB HID is not ready")
+	}
+	return nil
 }
 
 func (s *Server) doSerial(ctx context.Context, req Request) Response {
@@ -98,9 +155,16 @@ func (s *Server) doSerial(ctx context.Context, req Request) Response {
 		}
 		list := []deviceInfo{}
 		for _, p := range ports {
-			d:=deviceInfo{ID:p,Name:p,Platform:"ios",Type:"serial-port",State:"unverified"}
-   s.mu.Lock(); if c:=s.conns[p];c!=nil { d.Name=c.Name;d.Type="esp32agent";d.State="online";d.Connected=true };s.mu.Unlock()
-   list=append(list,d)
+			d := deviceInfo{ID: p, Name: p, Platform: "ios", Type: "serial-port", State: "unverified"}
+			s.mu.Lock()
+			if c := s.conns[p]; c != nil {
+				d.Name = c.Name
+				d.Type = "esp32agent"
+				d.State = "online"
+				d.Connected = true
+			}
+			s.mu.Unlock()
+			list = append(list, d)
 		}
 		return ok(map[string]any{"devices": list})
 	case "unpair":
@@ -128,7 +192,7 @@ func (s *Server) doSerial(ctx context.Context, req Request) Response {
 		st, age := c.Status()
 		st["id"], st["name"], st["age_ms"] = c.ID, c.Name, age.Milliseconds()
 		if req.Cmd == "pair" {
-			st["message"] = "serial connected; Bluetooth pairing is not required"
+			st["message"] = "PC serial connected; iPhone BLE HID pairing is managed on the phone"
 		}
 		return ok(st)
 	case "screenshot":
@@ -160,6 +224,13 @@ func (s *Server) doSerial(ctx context.Context, req Request) Response {
 		st, _ := c.Status()
 		if owner, _ := st["owner"].(string); owner != "" && owner != "none" {
 			return fail(errors.New("another controller owns the board"))
+		}
+		switch fields[0] {
+		case "status", "ping", "logs", "hidtrace", "crash", "reset", "release":
+		default:
+			if err := serialReady(st); err != nil {
+				return fail(err)
+			}
 		}
 		reply, err := c.Send(ctx, req.Text)
 		if fields[0] != "status" && fields[0] != "ping" && fields[0] != "logs" && fields[0] != "hidtrace" && fields[0] != "crash" {

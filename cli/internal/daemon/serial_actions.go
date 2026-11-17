@@ -24,8 +24,8 @@ func (s *Server) serialIO(ctx context.Context, c *Conn, req Request) Response {
 		if owner, _ := st["owner"].(string); owner != "" && owner != "none" {
 			return errors.New("another controller owns the board; serial input blocked")
 		}
-		if st["usb"] != "ok" {
-			return errors.New("phone USB HID is not ready")
+		if err := serialReady(st); err != nil {
+			return err
 		}
 		send := func(cmd string) error { _, err := c.Send(ctx, cmd); return err }
 		switch req.Cmd {
@@ -43,8 +43,12 @@ func (s *Server) serialIO(ctx context.Context, c *Conn, req Request) Response {
 			if text == "" {
 				return errors.New("nothing typeable in text")
 			}
+			chunk := textChunk
+			if st["hid_output"] == "ble" {
+				chunk = 16
+			}
 			for len(text) > 0 {
-				n := min(len(text), textChunk)
+				n := min(len(text), chunk)
 				if _, e := c.pointer(s.Dir).Type(ctx, text[:n]); e != nil {
 					return e
 				}
@@ -60,7 +64,7 @@ func (s *Server) serialIO(ctx context.Context, c *Conn, req Request) Response {
 			return send("homescreen") // One explicit action; never silently add Cmd+H and a swipe.
 		}
 		if num(st["abs"]) != 1 {
-			return errors.New("native absolute USB firmware required; no relative fallback")
+			return errors.New("native absolute HID firmware required; no relative fallback")
 		}
 		n := 2
 		if req.Cmd == "swipe" {
@@ -146,7 +150,8 @@ func (s *Server) serialIO(ctx context.Context, c *Conn, req Request) Response {
 	if err != nil {
 		return fail(err)
 	}
-	out := map[string]any{"message": req.Cmd + " done", "effect_verified": false, "transport": "serial", "hid_output": "usb"}
+	st, _ := c.Status()
+	out := map[string]any{"message": req.Cmd + " done", "effect_verified": false, "transport": "serial", "hid_output": st["hid_output"]}
 	if req.Cmd == "swipe" {
 		out["note"] = "pointer drag submitted; page scrolling is not guaranteed; use scroll for content"
 	}

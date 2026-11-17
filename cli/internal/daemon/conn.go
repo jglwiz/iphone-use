@@ -23,15 +23,17 @@ import (
 
 // Conn is one board: its current session (reconnected on demand), status, latest frame and pointer.
 type Conn struct {
-	serial      commandLink
-	serialFault error
-	actionGate  chan struct{}
-	frameURL    string
-	frameStop   chan struct{}
-	frameErr    error
-	frameID     string
-	ID          string // board id, 12 hex
-	Name        string
+	serial       commandLink
+	serialFault  error
+	hidOutput    string // selected once when opening the serial connection
+	bleEpochSeen bool
+	actionGate   chan struct{}
+	frameURL     string
+	frameStop    chan struct{}
+	frameErr     error
+	frameID      string
+	ID           string // board id, 12 hex
+	Name         string
 
 	mu       sync.Mutex
 	swap     sync.RWMutex // Send holds it shared across a write, attach exclusively: no frame on a replaced session

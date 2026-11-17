@@ -1,11 +1,11 @@
 ---
 name: esp32agent
-description: See and drive a real iPhone through an ESP32 Agent board (USB mouse/keyboard + AirPlay screen mirroring, reached over serial). Use when asked to look at, tap, type on, or operate the iPhone, or to test an iOS app on the device.
+description: See and drive a real iPhone through an ESP32 Agent board (USB or BLE HID mouse/keyboard + AirPlay screen mirroring, reached over serial). Use when asked to look at, tap, type on, or operate the iPhone, or to test an iOS app on the device.
 ---
 
 # esp32agent
 
-`esp32agent` talks to an ESP32 Agent board plugged into the iPhone. The board is the phone's USB mouse and
+`esp32agent` talks over serial to an ESP32 Agent board connected to the iPhone by USB or BLE HID. The board is the phone's USB or BLE HID mouse and
 keyboard; this computer reaches it over a persistent serial port. Screens come from an independent HTTP AirPlay service. Every command prints
 JSON: `{"status":"ok","data":...}` or `{"status":"error","error":"..."}`. The MCP server (`esp32agent mcp`)
 offers the same as tools: screenshot, tap, longpress, swipe, scroll, type_text, press_key, press_button, device_info,
@@ -16,12 +16,13 @@ plus history, intent_list, intent_show, intent_save, memory_recall and memory_ad
 - Set `ESP32AGENT_PORT` to the verified port, e.g. COM24; `devices` only enumerates ports.
 - Set `ESP32AGENT_FRAME_URL` to the existing AirPlay HTTP `/frame` endpoint (default http://127.0.0.1:8892/frame).
 - Keep the receiver running; stop a verified temporary serial bridge before starting this daemon.
-- `device info` must report `control_transport=serial`, `hid_output=usb`, `usb=ok`. No PC Bluetooth pairing.
+- Set `ESP32AGENT_HID_OUTPUT=usb` (default) or `ble`; stop the daemon before changing configuration. `device info` reports `control_transport=serial` and the actual output. USB requires `usb=ok`; BLE requires `ble_ready`, `ble_connected`, `ble_encrypted`, `ready` true and no fault. No PC Bluetooth pairing.
+- Pair the iPhone through AssistiveTouch → Devices → Bluetooth Devices; USB can guide pairing. Only manage the intended Handsy HID device. BLE failure never falls back to USB.
 - `calibrate` only reports native absolute mode; it does not generate verified calibration.
 
 ## The loop
 1. `esp32agent screenshot` (writes a PNG in the current directory and prints its `filePath`; read the image).
-   It requires a fresh capture after the last action, with original frame metadata; absence of a new frame is an error, not permission to replay input.
+   Read the capture metadata: an old still frame may be returned as observation_only with its original timestamp. It is not post-action evidence or permission to replay input.
 2. Decide one action from what you see.
 3. Act, with coordinates in pixels of that screenshot (full size: don't pass `--scale`/`--max-size` if you
    take coordinates from it):
@@ -73,6 +74,7 @@ After a task succeeded, save it so the next run is faster:
 - An uncertain timeout/disconnect is never replayed. Inspect the phone and saved output; recover the daemon explicitly.
 - An old screenshot may be a still screen: inspect capture metadata. `observation_only` preserves the original frame time and is not post-action evidence. Source failure, no frame, and an explicitly reported mirroring disconnect are separate errors; a cached image alone leaves mirroring state unknown. Do not restart UxPlay automatically.
 - USB not ready: check phone unlock and the native USB cable. Port names are not permanent identities.
+- BLE not ready: check the intended phone pairing, encryption and report subscriptions; never borrow USB readiness. After a connection-generation fault, inspect the phone and explicitly restart the daemon; input is not replayed.
 - Another controller owns the board: do not inject input concurrently.
 - A firmware `ok` means submission, not a verified UI effect. Inspect the next screenshot.
 - `swipe` moves held objects but is not proven to scroll every page; use `scroll` for content.

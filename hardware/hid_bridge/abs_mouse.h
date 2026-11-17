@@ -19,7 +19,8 @@ public:
   // of 8 ms reports) far under the 8 s watchdog.
   static const long MAX_MOVE = FULL / MOVE_SCALE + 1;
 
-  AbsMouse() { hid.addDevice(this, sizeof DESCRIPTOR); }  // must be global: USB starts before setup()
+  using Output = bool (*)(uint8_t, const void *, size_t);
+  AbsMouse(Output output = nullptr) : output_(output) { hid.addDevice(this, sizeof DESCRIPTOR); }
   void begin() { hid.begin(); }
 
   void moveTo(long x, long y) {
@@ -136,10 +137,11 @@ private:
   void transmit(uint8_t report, const void *data, size_t length, int8_t wheel) {
 #if HID_TRACE
     uint32_t start = micros();
-    bool ok = hid.SendReport(report, data, length);
+    bool ok = output_ ? output_(report, data, length) : hid.SendReport(report, data, length);
     trace_[traceCount_++ % 16] = {start, micros(), x_, y_, buttons_, wheel, ok, report, (uint8_t)length};
 #else
-    hid.SendReport(report, data, length);
+    if (output_) output_(report, data, length);
+    else hid.SendReport(report, data, length);
 #endif
   }
 
@@ -150,6 +152,7 @@ private:
 #endif
 
   USBHID hid;
+  Output output_;
   uint8_t buttons_ = 0;
   uint16_t x_ = 0, y_ = 0;
 };
