@@ -5,7 +5,7 @@
 // HID commands (unchanged from the old TCP protocol, the board answers "ok" or "err <why>"):
 //   ping | pace | home | move <dx> <dy> [speed] | press | release | click
 //   abs <x> <y> [step] (flash.sh --abs builds: 0-32767 across the screen; `home` and `move` still work)
-//   scroll <v> <h> | type <ascii text> | key <combo, e.g. cmd+h, enter>
+//   scroll_by <amount> | scroll <v> <h> | scroll_burst <v> <h> <count> | type <ascii text> | key <combo>
 //   homescreen (the consumer-control Home key, "AC Home": iOS goes to the Home Screen, like a keyboard's home key)
 
 #include <esp_task_wdt.h>
@@ -184,6 +184,38 @@ String run(const String &line) {
   }
   if (cmd == "click") { mouse.press(MOUSE_LEFT); delay(60); mouse.release(MOUSE_LEFT); holdUntil = 0; return "ok"; }
   if (cmd == "scroll") { mouse.move(0, 0, a, b); return "ok"; }
+  if (cmd == "scroll_by") {
+    // Positive means content moves down; the unit is a bounded gesture, not pixels.
+    long amount;
+    char extra;
+    if (sscanf(arg.c_str(), "%ld %c", &amount, &extra) != 1 || amount < -4 || amount > 4)
+      return "err usage: scroll_by AMOUNT (-4..4)";
+    if (!amount) return "ok";
+    const int wheel = amount > 0 ? 8 : -8;
+    const int reports = abs((int)amount) * 8;
+    for (int i = 0; i < reports; ++i) {
+      if (i) { delay(100); if (!usbReady()) return "err phone usb asleep (scroll may be partial)"; }
+      mouse.move(0, 0, wheel, 0);
+    }
+    return "ok";
+  }
+  if (cmd == "scroll_burst") {
+    // A single wheel report reached Safari but did not scroll on the tested iPhone. Keep the reports
+    // close together on the board instead of depending on transport round-trip time.
+    long v, h, count;
+    char extra;
+    if (sscanf(arg.c_str(), "%ld %ld %ld %c", &v, &h, &count, &extra) != 3 ||
+        v < -127 || v > 127 || h < -127 || h > 127 || (!v && !h) || count < 1 || count > 20)
+      return "err usage: scroll_burst V H COUNT (axes -127..127, count 1..20)";
+#if ABS_POINTER
+    if (h) return "err horizontal scroll unsupported by absolute mouse";
+#endif
+    for (long i = 0; i < count; ++i) {
+      if (i) { delay(100); if (!usbReady()) return "err phone usb asleep (scroll may be partial)"; }
+      mouse.move(0, 0, v, h);
+    }
+    return "ok";
+  }
   if (cmd == "type") { keyboard.print(arg); return "ok"; }
   if (cmd == "key") return pressCombo(arg) ? "ok" : "err unknown key";
   if (cmd == "homescreen") { consumer.press(AC_HOME); delay(40); consumer.release(); return "ok"; }

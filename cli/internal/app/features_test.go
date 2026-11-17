@@ -18,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -92,7 +93,7 @@ func TestReportShowsTheRedactedFileAndOnlyOpensTheMail(t *testing.T) {
 	}
 	// the file it wrote; reveal opens it (macOS, Windows) or its folder (Linux), so take the path from the output
 	m := regexp.MustCompile(`Attach (\S+) and send it yourself`).FindStringSubmatch(text)
-	if m == nil || !strings.HasPrefix(m[1], filepath.Dir(opened[1][len(opened[1])-1])) {
+	if m == nil || !strings.HasPrefix(m[1], filepath.Dir(strings.TrimPrefix(opened[1][len(opened[1])-1], "/select,"))) {
 		t.Fatalf("no file path in the output or the reveal call: %s %v", text, opened)
 	}
 	path := m[1]
@@ -168,7 +169,7 @@ func TestUpgrade(t *testing.T) {
 		t.Fatalf("upgrade: %+v", o)
 	}
 	st, _ := os.Stat(exe)
-	if b, _ := os.ReadFile(exe); string(b) != "#!new binary" || st.Mode().Perm() != 0o755 {
+	if b, _ := os.ReadFile(exe); string(b) != "#!new binary" || (runtime.GOOS != "windows" && st.Mode().Perm() != 0o755) {
 		t.Fatalf("installed %q %v", b, st.Mode())
 	}
 	if left, _ := filepath.Glob(filepath.Join(filepath.Dir(exe), ".esp32agent-*")); len(left) != 0 {

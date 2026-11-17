@@ -5,29 +5,30 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/onehumanbeing/esp32-iphone-agent/cli/internal/ble"
 	"github.com/onehumanbeing/esp32-iphone-agent/cli/internal/config"
 	"github.com/onehumanbeing/esp32-iphone-agent/cli/internal/proto"
+	"github.com/onehumanbeing/esp32-iphone-agent/cli/internal/simboard"
 )
 
 type fakeTransport struct{ b *proto.FakeBoard }
 
-func (f fakeTransport) Scan(context.Context, time.Duration) ([]ble.Found, error) {
-	return []ble.Found{{Name: "ESP32 Agent 6AD5", Addr: "fake"}}, nil
+func (f fakeTransport) Scan(context.Context, time.Duration) ([]simboard.Found, error) {
+	return []simboard.Found{{Name: "ESP32 Agent 6AD5", Addr: "fake"}}, nil
 }
 
-func (f fakeTransport) Connect(context.Context, ble.Found) (proto.Link, error) {
+func (f fakeTransport) Connect(context.Context, simboard.Found) (proto.Link, error) {
 	return f.b.Connect(), nil
 }
 
 // start runs a daemon in process on a short temp dir (unix socket paths are limited to ~100 bytes).
-func start(t *testing.T, tr ble.Transport) (*Client, *Server) { return startWith(t, tr, nil) }
+func start(t *testing.T, tr simboard.Transport) (*Client, *Server) { return startWith(t, tr, nil) }
 
-func startWith(t *testing.T, tr ble.Transport, dial func(context.Context, string) (proto.Link, error)) (*Client, *Server) {
+func startWith(t *testing.T, tr simboard.Transport, dial func(context.Context, string) (proto.Link, error)) (*Client, *Server) {
 	dir, err := os.MkdirTemp("/tmp", "e32a")
 	if err != nil {
 		t.Fatal(err)
@@ -89,7 +90,7 @@ func TestPairInfoAndBusy(t *testing.T) {
 		t.Fatal("key not stored")
 	}
 	st, err := os.Stat(s.Dir + "/config.json")
-	if err != nil || st.Mode().Perm() != 0o600 {
+	if err != nil || (runtime.GOOS != "windows" && st.Mode().Perm() != 0o600) {
 		t.Fatalf("config.json mode %v %v", st.Mode(), err)
 	}
 

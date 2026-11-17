@@ -1,4 +1,4 @@
-// Package daemon holds the BLE sessions: the first CLI command starts `esp32agent daemon`, and every command
+// Package daemon owns a persistent serial port: the first CLI command starts `esp32agent daemon`, and every command
 // reaches it over a unix socket in the config dir. It exits after 10 minutes without requests.
 package daemon
 
@@ -16,10 +16,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/onehumanbeing/esp32-iphone-agent/cli/internal/ble"
 	"github.com/onehumanbeing/esp32-iphone-agent/cli/internal/config"
 	"github.com/onehumanbeing/esp32-iphone-agent/cli/internal/history"
 	"github.com/onehumanbeing/esp32-iphone-agent/cli/internal/proto"
+	"github.com/onehumanbeing/esp32-iphone-agent/cli/internal/simboard"
 	"github.com/onehumanbeing/esp32-iphone-agent/cli/internal/video"
 )
 
@@ -49,14 +49,15 @@ func ok(data any) Response    { return Response{Status: "ok", Data: data} }
 func fail(err error) Response { return Response{Status: "error", Error: err.Error()} }
 
 type Server struct {
-	Transport ble.Transport
-	Config    *config.Config
-	Dir       string
-	Version   string
-	Idle      time.Duration // exit after this long without requests (0 = never)
-	ScanTime  time.Duration
-	DialWiFi  func(ctx context.Context, ip string) (proto.Link, error) // the board's Wi-Fi link; nil: ble.DialWiFi
-	WiFiCheck time.Duration                                            // how often to try it (0: 2 s)
+	Transport  simboard.Transport
+	OpenSerial func(string) (commandLink, error)
+	Config     *config.Config
+	Dir        string
+	Version    string
+	Idle       time.Duration // exit after this long without requests (0 = never)
+	ScanTime   time.Duration
+	DialWiFi   func(ctx context.Context, ip string) (proto.Link, error) // the board's Wi-Fi link; nil: simboard.DialWiFi
+	WiFiCheck  time.Duration                                            // how often to try it (0: 2 s)
 
 	mu     sync.Mutex
 	conns  map[string]*Conn
@@ -161,6 +162,9 @@ func (s *Server) handle(nc net.Conn) {
 
 // Do runs one request.
 func (s *Server) Do(ctx context.Context, req Request) Response {
+	if s.Transport == nil && req.Cmd != "version" && req.Cmd != "stop" {
+		return s.doSerial(ctx, req)
+	}
 	switch req.Cmd {
 	case "version":
 		return ok(map[string]string{"version": s.Version})
@@ -249,14 +253,14 @@ func (s *Server) devices(ctx context.Context) Response {
 	return ok(map[string]any{"devices": list})
 }
 
-func (s *Server) scan(ctx context.Context) ([]ble.Found, error) {
+func (s *Server) scan(ctx context.Context) ([]simboard.Found, error) {
 	s.linkMu.Lock()
 	defer s.linkMu.Unlock()
 	return s.Transport.Scan(ctx, s.ScanTime)
 }
 
 // matches: a selector is a full board id or its last 4 hex digits; a board whose name was not seen matches any.
-func matches(f ble.Found, sel string) bool {
+func matches(f simboard.Found, sel string) bool {
 	if sel == "" || f.Suffix() == "" {
 		return true
 	}
@@ -265,12 +269,12 @@ func matches(f ble.Found, sel string) bool {
 }
 
 // pick chooses the board to connect to: the one matching sel, else the only one, else the only paired one.
-func (s *Server) pick(ctx context.Context, sel string, wantPaired bool) (ble.Found, error) {
+func (s *Server) pick(ctx context.Context, sel string, wantPaired bool) (simboard.Found, error) {
 	found, err := s.scan(ctx)
 	if err != nil {
-		return ble.Found{}, err
+		return simboard.Found{}, err
 	}
-	var cand, paired []ble.Found
+	var cand, paired []simboard.Found
 	for _, f := range found {
 		if matches(f, sel) {
 			cand = append(cand, f)
@@ -281,9 +285,9 @@ func (s *Server) pick(ctx context.Context, sel string, wantPaired bool) (ble.Fou
 	}
 	switch {
 	case len(cand) == 0 && sel != "":
-		return ble.Found{}, fmt.Errorf("board %s not found (is it plugged into the iPhone and near this computer?)", sel)
+		return simboard.Found{}, fmt.Errorf("board %s not found (is it plugged into the iPhone and near this computer?)", sel)
 	case len(cand) == 0:
-		return ble.Found{}, errors.New("board not found: no \"ESP32 Agent\" nearby (plugged into the iPhone? firmware with CLI support?)")
+		return simboard.Found{}, errors.New("board not found: no \"ESP32 Agent\" nearby (plugged into the iPhone? firmware with CLI support?)")
 	case len(cand) == 1:
 		return cand[0], nil
 	case wantPaired && len(paired) == 1:
@@ -293,7 +297,7 @@ func (s *Server) pick(ctx context.Context, sel string, wantPaired bool) (ble.Fou
 	for _, f := range cand {
 		names = append(names, f.Suffix())
 	}
-	return ble.Found{}, fmt.Errorf("several boards found (%s): pass --device <id> or set ESP32AGENT_DEVICE", strings.Join(names, ", "))
+	return simboard.Found{}, fmt.Errorf("several boards found (%s): pass --device <id> or set ESP32AGENT_DEVICE", strings.Join(names, ", "))
 }
 
 func explain(err error) error {
@@ -324,6 +328,9 @@ func (s *Server) appBusy() bool {
 
 // conn returns the connected board for sel, connecting (scan + HELLO) if needed.
 func (s *Server) conn(ctx context.Context, sel string) (*Conn, error) {
+	if s.Transport == nil {
+		return s.serialConn(ctx, sel)
+	}
 	var live []*Conn
 	s.mu.Lock()
 	for id, c := range s.conns {
@@ -346,7 +353,7 @@ func (s *Server) conn(ctx context.Context, sel string) (*Conn, error) {
 }
 
 // open connects to f and starts a session. l: an already open link (after PAIR).
-func (s *Server) open(ctx context.Context, f ble.Found, sel string, l proto.Link) (*Conn, error) {
+func (s *Server) open(ctx context.Context, f simboard.Found, sel string, l proto.Link) (*Conn, error) {
 	s.linkMu.Lock()
 	defer s.linkMu.Unlock()
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
@@ -381,7 +388,9 @@ func (s *Server) open(ctx context.Context, f ble.Found, sel string, l proto.Link
 		s.hearingFor(c)
 		dial := s.DialWiFi
 		if dial == nil {
-			dial = ble.DialWiFi
+			dial = func(context.Context, string) (proto.Link, error) {
+				return nil, errors.New("network board transport removed")
+			}
 		}
 		c.wifi = newWifiLink(dial, func(ctx context.Context, l proto.Link) (*proto.Session, error) {
 			return proto.Hello(ctx, l, s.Config.ClientIDBytes(), s.Config.Key)

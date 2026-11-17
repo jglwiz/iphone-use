@@ -4,6 +4,7 @@ import (
 	"image"
 	"log"
 	"math"
+	"strconv"
 	"strings"
 
 	"github.com/onehumanbeing/esp32-iphone-agent/cli/internal/history"
@@ -46,6 +47,9 @@ func (s *Server) recordAction(c *Conn, req Request, err error) {
 		}
 		rec["action"] = "swipe"
 		rec["x1"], rec["y1"], rec["x2"], rec["y2"] = unit(req.Pts[0], w), unit(req.Pts[1], h), unit(req.Pts[2], w), unit(req.Pts[3], h)
+	case "scroll":
+		rec["action"] = "scroll"
+		rec["amount"], _ = strconv.Atoi(req.Text)
 	case "text":
 		rec["action"], rec["text"] = "type", req.Text
 	case "keys":

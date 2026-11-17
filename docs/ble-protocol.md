@@ -34,6 +34,8 @@ The iOS runner sends `reset` when a task finishes, fails, or is stopped. A stopp
 If older firmware explicitly rejects `reset` as an unknown command, the app sends `release` to release the left mouse button. Other held inputs remain unconfirmed. The app records this on every handoff and notifies the user once per connection.
 
 New:
+- `scroll_by AMOUNT` — scroll vertically at the current pointer position. AMOUNT is an integer from -4 to 4: positive scrolls down, negative up, and zero does nothing. One unit is a gesture, not a guaranteed number of pixels; actual movement varies with the application and iOS. An interrupted command may have partially scrolled: do not automatically retry on a timeout or USB error. Older firmware rejects this command.
+- `scroll_burst V H COUNT` — send 1–20 wheel reports, 100 ms apart, without relying on command round-trip time. Each axis is -127 through 127 and at least one must be nonzero. The absolute mouse currently supports vertical scrolling only; a horizontal request is rejected. An interrupted burst may have scrolled partially, so do not automatically retry on a timeout or USB error. `scroll` retains its original single-report behavior.
 - `stream on|off` — continuously forward every access unit over `video` (default off).
 - `snap` — send SPS/PPS + every AU since the last IDR (the current GOP), then reply `ok`.
 - `res W H` — AirPlay resolution advertised in `/info` (default 480 1040), stored in NVS; takes effect on the next mirroring session.

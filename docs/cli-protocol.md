@@ -1,3 +1,5 @@
+> Historical encrypted protocol retained for iOS compatibility and offline simulation. The production PC entry point now uses [serial control](serial-control.md), not Bluetooth or automatic Wi-Fi fallback.
+
 # CLI protocol (ESP32 ⇄ computer, over BLE and Wi-Fi)
 
 The `esp32agent` CLI talks to the board over BLE next to the iOS app (both can be connected at once). It never uses

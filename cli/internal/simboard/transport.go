@@ -1,6 +1,5 @@
-// Package ble finds boards and opens links to their cli service: over BLE, or to the simulated board
-// (hardware/tests/sim) when ESP32AGENT_SIM is set.
-package ble
+// Package simboard provides offline protocol test fixtures. It has no hardware transport.
+package simboard
 
 import (
 	"context"
@@ -35,12 +34,12 @@ type Transport interface {
 	Connect(ctx context.Context, f Found) (proto.Link, error)
 }
 
-// Default is the simulated board when ESP32AGENT_SIM names its binary, BLE otherwise.
+// Default returns an explicitly requested simulator, nil for normal serial operation.
 func Default() Transport {
 	if sim := os.Getenv("ESP32AGENT_SIM"); sim != "" {
 		return &Sim{Bin: sim, Screen: os.Getenv("ESP32AGENT_SIM_SCREEN")}
 	}
-	return &BLE{}
+	return nil
 }
 
 // chanLink is a Link fed by a callback: notifies go into a buffered channel.

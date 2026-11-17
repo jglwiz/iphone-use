@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"image"
+	"image/draw"
 	"log"
 	"strconv"
 	"strings"
@@ -22,8 +23,15 @@ import (
 
 // Conn is one board: its current session (reconnected on demand), status, latest frame and pointer.
 type Conn struct {
-	ID   string // board id, 12 hex
-	Name string
+	serial      commandLink
+	serialFault error
+	actionGate  chan struct{}
+	frameURL    string
+	frameStop   chan struct{}
+	frameErr    error
+	frameID     string
+	ID          string // board id, 12 hex
+	Name        string
 
 	mu       sync.Mutex
 	swap     sync.RWMutex // Send holds it shared across a write, attach exclusively: no frame on a replaced session
@@ -77,7 +85,7 @@ func newConn(id, name, ffmpeg string) *Conn {
 func (c *Conn) connected() bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.sess != nil
+	return c.serial != nil || c.sess != nil
 }
 
 // attach takes over a fresh session on link l (via "ble" or "wifi") and turns on the CLI's own video stream.
@@ -148,6 +156,16 @@ func (c *Conn) detach(s *proto.Session, why error) {
 }
 
 func (c *Conn) close() {
+	if c.serial != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		c.serial.Send(ctx, "reset")
+		c.serial.Close()
+		if c.frameStop != nil {
+			close(c.frameStop)
+		}
+		return
+	}
 	if c.wifi != nil {
 		c.wifi.stop()
 	}
@@ -165,6 +183,9 @@ func (c *Conn) close() {
 
 // Via is the current session's link ("ble", "wifi"), "" without one.
 func (c *Conn) Via() string {
+	if c.serial != nil {
+		return "serial"
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.sess == nil {
@@ -215,6 +236,9 @@ func (c *Conn) read(s *proto.Session, quit chan struct{}) {
 
 // Send runs one command and returns the reply after "ok"; an "err" reply is an error.
 func (c *Conn) Send(ctx context.Context, line string) (string, error) {
+	if c.serial != nil {
+		return c.serial.Send(ctx, line)
+	}
 	c.mu.Lock()
 	s := c.sess
 	if s == nil {
@@ -355,6 +379,12 @@ func (c *Conn) onVideo(chunk []byte, gap bool) {
 
 func hashImage(img image.Image) uint64 {
 	h := fnv.New64a()
+	if _, ok := img.(*image.RGBA); !ok {
+		b := img.Bounds()
+		rgba := image.NewRGBA(b)
+		draw.Draw(rgba, b, img, b.Min, draw.Src)
+		img = rgba
+	}
 	if r, ok := img.(*image.RGBA); ok {
 		h.Write(r.Pix)
 	}
@@ -409,6 +439,11 @@ func (c *Conn) Status() (map[string]any, time.Duration) {
 // Screen (pointer.Screen).
 
 func (c *Conn) Live() bool {
+	if c.serial != nil {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		return c.frame != nil && c.frameErr == nil && time.Since(c.captured) < 5*time.Second
+	}
 	st, _ := c.Status()
 	return st["ap"] == "streaming" && c.Frame() != nil
 }

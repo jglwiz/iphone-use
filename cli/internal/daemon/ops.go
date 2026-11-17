@@ -30,6 +30,10 @@ func num(v any) float64 { f, _ := v.(float64); return f }
 
 // videoState explains why there is no usable screen, nil when mirroring streams.
 func (s *Server) videoState(ctx context.Context, c *Conn) error {
+	if c.serial != nil {
+		_, err := c.httpFrame(ctx)
+		return err
+	}
 	for i := 0; i < 30; i++ { // the first status arrives within a second of connecting
 		if _, age := c.Status(); age >= 0 {
 			break
@@ -60,6 +64,9 @@ func (s *Server) videoState(ctx context.Context, c *Conn) error {
 
 // frame returns the screen as it is after the last action (like the app's VideoFeed.afterAction).
 func (s *Server) frame(ctx context.Context, c *Conn) (image.Image, error) {
+	if c.serial != nil {
+		return c.httpFrame(ctx)
+	}
 	if err := s.videoState(ctx, c); err != nil {
 		return nil, err
 	}
@@ -135,8 +142,15 @@ func (s *Server) screenshot(ctx context.Context, c *Conn, req Request) Response 
 		format = "jpeg"
 	}
 	s.recordShot(img, r.Dx(), r.Dy())
-	return ok(map[string]any{"format": format, "data": base64.StdEncoding.EncodeToString(data),
-		"width": r.Dx(), "height": r.Dy(), "device": c.ID})
+	out := map[string]any{"format": format, "data": base64.StdEncoding.EncodeToString(data),
+		"width": r.Dx(), "height": r.Dy(), "device": c.ID}
+	if c.serial != nil {
+		c.mu.Lock()
+		out["frame_time"] = float64(c.captured.UnixMilli()) / 1000
+		out["frame_id"] = c.frameID
+		c.mu.Unlock()
+	}
+	return ok(out)
 }
 
 func (c *Conn) pointer(dir string) *pointer.Pointer {
@@ -262,6 +276,9 @@ func (s *Server) screencapture(ctx context.Context, req Request, w io.Writer) {
 	c, err := s.conn(ctx, req.Device)
 	if err == nil {
 		err = s.videoState(ctx, c)
+	}
+	if err == nil && c.serial != nil && req.Format == "h264" {
+		err = errors.New("HTTP screenshot source supports MJPEG, not H.264")
 	}
 	if err == nil && req.Format != "h264" && req.Format != "mjpeg" {
 		err = errors.New("format must be h264 or mjpeg")

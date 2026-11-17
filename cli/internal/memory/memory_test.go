@@ -2,6 +2,7 @@ package memory
 
 import (
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -11,7 +12,7 @@ func shared(t *testing.T) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return string(b)
+	return strings.ReplaceAll(string(b), "\r\n", "\n")
 }
 
 func TestTheAppsFileRoundTripsUnchanged(t *testing.T) {

@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"os"
+	"strconv"
 
 	"github.com/onehumanbeing/esp32-iphone-agent/cli/internal/daemon"
 )
@@ -33,7 +35,7 @@ type tool struct {
 }
 
 func schema(required []string, props map[string]any) map[string]any {
-	props["device"] = map[string]any{"type": "string", "description": "board id; only needed with several boards"}
+	props["device"] = map[string]any{"type": "string", "description": "verified serial port, e.g. COM24; otherwise ESP32AGENT_PORT"}
 	if required == nil {
 		required = []string{}
 	}
@@ -43,12 +45,13 @@ func schema(required []string, props map[string]any) map[string]any {
 var (
 	numProp = map[string]any{"type": "number"}
 	tools   = []tool{
+		{"scroll", "Scroll content at the current pointer; positive down, negative up, zero no-op. Not pixels.", schema([]string{"amount"}, map[string]any{"amount": map[string]any{"type": "integer", "minimum": -4, "maximum": 4}})},
 		{"screenshot", "The iPhone's screen now (after the last action has settled). Coordinates for the other tools are pixels of this image.", schema(nil, map[string]any{})},
 		{"tap", "Tap at x, y (screenshot pixels).", schema([]string{"x", "y"}, map[string]any{"x": numProp, "y": numProp,
 			"count": map[string]any{"type": "integer", "description": "taps in a row at the point; 2 is a double tap (default 1)"}})},
 		{"longpress", "Press and hold at x, y.", schema([]string{"x", "y"}, map[string]any{"x": numProp, "y": numProp,
 			"duration_ms": map[string]any{"type": "integer", "description": "default 1000"}})},
-		{"swipe", "Swipe from x1, y1 to x2, y2 (rests at the end, so lists stop there).", schema([]string{"x1", "y1", "x2", "y2"},
+		{"swipe", "Drag from x1, y1 to x2, y2. Page scrolling is not guaranteed; use scroll for content.", schema([]string{"x1", "y1", "x2", "y2"},
 			map[string]any{"x1": numProp, "y1": numProp, "x2": numProp, "y2": numProp})},
 		{"type_text", "Type text into the focused field. ASCII only: Chinese is typed as pinyin (then commit a candidate with press_key space or a tap).",
 			schema([]string{"text"}, map[string]any{"text": map[string]any{"type": "string"}})},
@@ -56,7 +59,7 @@ var (
 			schema([]string{"key"}, map[string]any{"key": map[string]any{"type": "string"}})},
 		{"press_button", "Press a hardware button. Only HOME (go to the Home Screen).",
 			schema([]string{"button"}, map[string]any{"button": map[string]any{"type": "string", "enum": []string{"HOME"}}})},
-		{"device_info", "Board status: mirroring (ap), video frozen (fz), app busy (busy), USB, BLE link.", schema(nil, map[string]any{})},
+		{"device_info", "Board status: mirroring (ap), video frozen (fz), app busy (busy), USB HID and serial transport.", schema(nil, map[string]any{})},
 		{"phone_audio", "What the iPhone played in the last 30 s (a video, a call, an app's voice) as words, or why it can't be heard " +
 			"(listening off, the app not sharing, no Wi-Fi). The words can be partial or misheard.", schema(nil, map[string]any{})},
 	}
@@ -137,8 +140,34 @@ func (a *App) callTool(name string, args map[string]any) map[string]any {
 	if dev == "" {
 		dev = os.Getenv("ESP32AGENT_DEVICE")
 	}
+	// Validate required numeric inputs before opening a device or injecting input.
+	for _, t := range tools {
+		if t.Name != name {
+			continue
+		}
+		required, _ := t.InputSchema["required"].([]string)
+		for _, key := range required {
+			if _, ok := args[key]; !ok {
+				return textResult("missing required argument: "+key, true)
+			}
+		}
+	}
+	for _, key := range []string{"x", "y", "x1", "y1", "x2", "y2", "duration_ms", "count"} {
+		if raw, exists := args[key]; exists {
+			v, ok := raw.(float64)
+			if !ok || math.IsNaN(v) || math.IsInf(v, 0) || ((key == "duration_ms" || key == "count") && (v != math.Trunc(v) || v < 1 || v > 60000)) {
+				return textResult("invalid numeric argument: "+key, true)
+			}
+		}
+	}
 	req := daemon.Request{Device: dev}
 	switch name {
+	case "scroll":
+		amount, ok := args["amount"].(float64)
+		if !ok || math.IsNaN(amount) || math.IsInf(amount, 0) || amount != math.Trunc(amount) || amount < -4 || amount > 4 {
+			return textResult("amount must be an integer -4..4", true)
+		}
+		req.Cmd, req.Text = "scroll", strconv.Itoa(int(amount))
 	case "screenshot":
 		req.Cmd = "screenshot"
 	case "tap", "longpress":

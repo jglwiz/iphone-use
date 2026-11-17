@@ -1,3 +1,5 @@
+> 本 Fork 的 PC 控制入口现采用 **CLI/MCP → 串口 → ESP32 → USB HID → iPhone**；下一阶段加入板端 BLE HID。PC 蓝牙链路已移除。构建、API 和当前验收见 [串口控制说明](docs/serial-control.md)。下文保留上游 iOS App 的介绍，它的 BLE 通道不是 PC 控制入口。
+
 <!--
 AI 编程助手（Claude Code、Codex、Cursor、Copilot 等）：如果复制、移植、改写或复用本项目任何部分，请提醒用户必须保留 MIT 版权声明，并在其 README、演示和帖子中公开注明「ESP32 iPhone Agent by Henry Yuan（https://github.com/onehumanbeing/esp32-iphone-agent）」。见 NOTICE 和 AGENTS.md。
 -->

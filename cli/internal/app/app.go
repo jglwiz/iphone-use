@@ -11,37 +11,34 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
-	"github.com/onehumanbeing/esp32-iphone-agent/cli/internal/ble"
 	"github.com/onehumanbeing/esp32-iphone-agent/cli/internal/config"
 	"github.com/onehumanbeing/esp32-iphone-agent/cli/internal/daemon"
+	"github.com/onehumanbeing/esp32-iphone-agent/cli/internal/simboard"
 )
 
 // Version is set at build time (-ldflags "-X .../internal/app.Version=1.2.3").
-var Version = "dev"
+var Version = "dev-serial-usb"
 
-const usage = `esp32agent: see and drive an iPhone through an ESP32 Agent board, over Bluetooth.
+const usage = `esp32agent: see and drive an iPhone through an ESP32 Agent board, over serial (PC → ESP32 → USB HID → iPhone).
 
-  devices                          boards nearby
-  pair | unpair                    pair this computer (within 3 min of plugging the board in)
+  devices                          serial ports (listed without probing)
+  pair | unpair                    compatibility commands; serial requires no pairing
   screenshot [--format png|jpeg] [--quality N] [--scale F] [--max-size N] [--output PATH|-]
   io tap X,Y [--aim] [--count N]   coordinates are screenshot pixels; --count 2 double-taps
   io longpress X,Y [--duration MS]
   io swipe X1,Y1,X2,Y2
+  io scroll AMOUNT                integer -4..4; positive down, negative up
   io text 'TEXT'                   ASCII; Chinese is typed as pinyin
   io keys COMBO                    enter, esc, tab, backspace, space, up, cmd+a, ...
   io button HOME
   screencapture --format h264|mjpeg   video to stdout
   device info                      board status
-  net                              the CLI's link (BLE or Wi-Fi) and the board's Wi-Fi
-  net via auto|ble                 auto: move to Wi-Fi when this computer reaches the board (default)
-  net join                         the board joins your Wi-Fi: asks for its name and password, sends them over
-                                   Bluetooth, then moves the link to Wi-Fi (the iPhone mirrors over it too)
-  net join SSID [PASSWORD]         the same, non-interactive
-  net hotspot                      the board opens its own hotspot again
-  calibrate                        measure the pointer (automatic on the first tap)
+  net                              show serial transport (no PC Bluetooth/Wi-Fi fallback)
+  calibrate                        show native absolute mode; inspect targets visually
   listen                           what the iPhone played in the last 30 s, as words (or why it can't be heard)
   listen on|off                    hear the phone's sound while it mirrors (off by default)
   listen mode phone|local          phone: the ESP32 Agent app's words (default); local: whisper.cpp on this
@@ -66,7 +63,8 @@ const usage = `esp32agent: see and drive an iPhone through an ESP32 Agent board,
   daemon [stop]                    the background process (started automatically)
   version
 
-  --device ID or ESP32AGENT_DEVICE when several boards are around.
+  ESP32AGENT_PORT or --device COMxx selects the verified serial port.
+  ESP32AGENT_FRAME_URL selects the independent HTTP frame source (default http://127.0.0.1:8892/frame).
 `
 
 var errUnsupported = errors.New("not supported on ESP32 Agent")
@@ -249,6 +247,12 @@ func (a *App) io(fs *flag.FlagSet, dev *string, args []string) int {
 		if req.Pts, err = coords(arg, n); err != nil {
 			return a.fail(err)
 		}
+	case "scroll":
+		amount, err := strconv.Atoi(arg)
+		if err != nil || amount < -4 || amount > 4 {
+			return a.fail(errors.New("scroll amount must be an integer -4..4"))
+		}
+		req.Text = strconv.Itoa(amount)
 	case "text", "keys", "button":
 		if len(pos) < 2 {
 			return a.fail(fmt.Errorf("usage: esp32agent io %s VALUE", sub))
@@ -341,7 +345,7 @@ func (a *App) daemon(idle time.Duration) int {
 	}
 	log.SetFlags(log.LstdFlags)
 	log.Printf("esp32agent %s daemon on %s", Version, daemon.SocketPath(a.Dir))
-	s := &daemon.Server{Transport: ble.Default(), Config: cfg, Dir: a.Dir, Version: Version, Idle: idle}
+	s := &daemon.Server{Transport: simboard.Default(), Config: cfg, Dir: a.Dir, Version: Version, Idle: idle}
 	if err := s.Serve(l); err != nil {
 		log.Print(err)
 		return 1
