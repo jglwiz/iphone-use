@@ -12,7 +12,7 @@
 #include "mbedtls/aes.h"
 #include "../hid_bridge/src/cli/cli_proto.h"
 #include "../hid_bridge/src/hid/arbiter.h"
-#include "../hid_bridge/src/hid/pace.h"
+#include "../shared_hid/pace.h"
 #include "../hid_bridge/src/log/logring.h"
 #include "mdns.h"  // stubs/: the host stand-in for ESP-IDF mdns
 #include "../hid_bridge/src/airplay/ap_internal.h"

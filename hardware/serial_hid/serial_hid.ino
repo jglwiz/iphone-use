@@ -14,7 +14,7 @@
 #include "cJSON.h"
 #define ABS_POINTER 1
 #define HID_TRACE 0
-#include "../hid_bridge/src/hid/pace.h"
+#include "../shared_hid/pace.h"
 
 // Exactly one output for each command. No radio command characteristics exist.
 bool useBLE = false, reportFailed = false, clearing = false, linkFault = false;
@@ -57,7 +57,7 @@ bool sendHIDReport(uint8_t id, const void *data, size_t n) {
   if (!ok) reportFailed = true;
   return ok;
 }
-#include "../hid_bridge/abs_mouse.h"
+#include "../shared_hid/abs_mouse.h"
 AbsMouse mouse(sendHIDReport);
 
 // Keep native USB keyboard behavior. BLE implements the same keyboard calls.
@@ -117,7 +117,7 @@ bool hidReady() {
   }
   return outputReady();
 }
-#include "../hid_bridge/src/hid/actions.h"
+#include "../shared_hid/actions.h"
 
 bool releaseInputs() {
   clearing=true;

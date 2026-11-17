@@ -35,7 +35,7 @@ for a in "$@"; do
   esac
 done
 [[ $PWD != *" "* ]] || { echo "the -include path below cannot contain spaces: $PWD"; exit 1; }
-DEFS+=" -include $PWD/hid_bridge/nimble_cfg.h"
+DEFS+=" -I$PWD -include $PWD/hid_bridge/nimble_cfg.h"
 FLAGS=(--build-property "compiler.cpp.extra_flags=$DEFS" --build-property "compiler.c.extra_flags=$DEFS")
 
 arduino-cli compile -b "$FQBN" "${FLAGS[@]}" --output-dir build hid_bridge

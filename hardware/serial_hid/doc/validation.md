@@ -4,7 +4,7 @@
 
 ## 实现与测试范围
 
-先完成独立原型，再整合正式代码。USB/BLE 共用 `hid_bridge/src/hid/actions.h`、`abs_mouse.h` 和 pace；BLE Report Map 直接由 USB 对象的描述符组成，不另建坐标或点击算法。实读 Report Map 为191字节，输入报告为：键盘1/8字节、Consumer 4/2字节、绝对位置10/5字节、独立按钮11/1字节、滚轮12/4字节。
+先完成独立原型，再整合正式代码。USB/BLE 共用 `shared_hid/actions.h`、`abs_mouse.h` 和 pace；BLE Report Map 直接由 USB 对象的描述符组成，不另建坐标或点击算法。实读 Report Map 为191字节，输入报告为：键盘1/8字节、Consumer 4/2字节、绝对位置10/5字节、独立按钮11/1字节、滚轮12/4字节。
 
 使用 COM24 的 ESP32-S3 revision 0.2、16 MB Flash、8 MB OPI PSRAM；原生 USB 接手机，独立 USB 串口接 PC。工具链为 ESP32 Arduino 3.3.12，串口双 HID 使用 NimBLE-Arduino 2.3.8；原 `hid_bridge` 另用既有 NimBLE 2.5.1 构建回归。测试只读复用现有 AirPlay `/frame`，没有调用参考 Backend 输入接口，也没有重启 UxPlay。
 

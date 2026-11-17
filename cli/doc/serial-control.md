@@ -2,7 +2,7 @@
 
 本分支的正式链路为 **CLI/MCP → daemon → Serial Port → ESP32 → USB / BLE HID → iPhone**。基于 Henry Yuan 的 ESP32 iPhone Agent；保留原 MIT 许可证与署名，公开演示、视频和文章也应注明原项目。
 
-USB HID 与 BLE HID 同时存在，每次只向显式选中的通路发送，沿用同一 CLI/MCP。PC 不再通过蓝牙连接开发板。本轮没有迁移旧 Python Backend；原 iOS App 的 BLE 功能与 PC 控制是不同路径。
+USB HID 与 BLE HID 同时存在，每次只向显式选中的通路发送，沿用同一 CLI/MCP。PC 不再通过蓝牙连接开发板。本轮没有迁移旧 Python Backend；旧 iOS App 与 Python server 已移除；当前不需要安装本项目 App。
 
 ## Windows 构建与启动
 
@@ -27,7 +27,7 @@ CLI 与 MCP 自动复用同一配置目录的 daemon。`ESP32AGENT_HOME` 可指�
 
 ## 固件与配对
 
-PC控制使用 `hardware/serial_hid`。固件构建、共享动作的设计原因和USB引导配对见 [板端双HID说明](../../hardware/serial_hid/doc/usb-ble-hid.md)；原 `hardware/hid_bridge` 保留iOS App固件用途。使用BLE前先在手机完成目标设备配对并确认BLE就绪，电脑本身无需蓝牙配对。
+PC控制使用 `hardware/serial_hid`。固件构建、共享动作的设计原因和USB引导配对见 [板端双HID说明](../../hardware/serial_hid/doc/usb-ble-hid.md)；原 `hardware/hid_bridge` 仅保留为历史固件及离线协议测试。使用BLE前先在手机完成目标设备配对并确认BLE就绪，电脑本身无需蓝牙配对。
 
 ## 输出选择与接线
 

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Store-only sources (the App Store build's private folder, see ios/fastlane/Fastfile with_store_sources) must
+# Store-only sources (including historical App Store paths) must
 # never reach this public repository. Checks a commit's tree (default HEAD); exits 1 naming what it found.
 #   scripts/check-public.sh [commit]       CI and by hand
 #   as .git/hooks/pre-push                 checks every commit about to be pushed

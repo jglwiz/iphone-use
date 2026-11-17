@@ -31,5 +31,5 @@
       ]
     }
   },
-  "logo": "ios/IPhoneAgent/Assets.xcassets/AppIcon.appiconset/AppIcon.png"
+  "logo": "assets/plugin-icon.png"
 }

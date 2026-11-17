@@ -6,7 +6,7 @@
 
 用户要求保留成熟USB控制方式，并让BLE模拟同样的键盘和鼠标。PC到ESP32仍为串口；新增的是ESP32到iPhone的标准BLE HID输出，不恢复电脑蓝牙命令服务，也不迁入参考Backend控制架构。
 
-USB/BLE共用仓库中的 `hardware/hid_bridge/src/hid/actions.h`、`abs_mouse.h` 和pace实现，避免两条通路分别修改定位、点击及滚轮算法。原 `hid_bridge` 保留iOS App固件用途，默认AbsMouse输出仍为USB；串口入口通过发送回调选择输出。正式代码不依赖任务原型。
+USB/BLE共用仓库中的 `hardware/shared_hid/actions.h`、`abs_mouse.h` 和pace实现，避免两条通路分别修改定位、点击及滚轮算法。原 `hid_bridge` 仅保留为历史固件及离线协议测试，默认AbsMouse输出仍为USB；串口入口通过发送回调选择输出。正式代码不依赖任务原型。
 
 实测中合并位置/按钮报告没有产生完整点击，拆开后得到可信按下、松开和点击事件。因此位置、按钮和滚轮保持独立，切路不重发缓存位置。BLE Report Map直接由USB对象注册的描述符组成：1键盘8字节、4 Consumer 2字节、10绝对位置5字节、11按钮1字节、12滚轮4字节。BLE特征值不带Report ID前缀，ID由Report Reference标识。
 
@@ -24,7 +24,7 @@ BLE就绪必须满足连接、加密、全部输入报告订阅及未挂起；�
 
 ## 构建与首次配对
 
-正式入口是 `hardware/serial_hid`，共享 `hardware/hid_bridge/src/hid/actions.h`、`abs_mouse.h` 和 pace 模块；旧 `hid_bridge` 仍用于原 iOS App 路径。新入口只有串口命令输入和标准 BLE HID 服务，不提供 PC 蓝牙命令服务。默认 USB；BLE 广播名为 `Handsy Serial HID`。沿用实验稳定地址与相同报告布局，已有手机可能缓存旧名称 `Handsy-BLE-Lab`。
+正式入口是 `hardware/serial_hid`，共享 `hardware/shared_hid/actions.h`、`abs_mouse.h` 和 pace 模块；旧 `hid_bridge` 仅保留历史固件与协议测试，不是当前部署入口。新入口只有串口命令输入和标准 BLE HID 服务，不提供 PC 蓝牙命令服务。默认 USB；BLE 广播名为 `Handsy Serial HID`。沿用实验稳定地址与相同报告布局，已有手机可能缓存旧名称 `Handsy-BLE-Lab`。
 
 已验证的依赖为 ESP32 Arduino 3.3.12、NimBLE-Arduino 2.3.8。在仓库根构建：
 
