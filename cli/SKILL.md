@@ -71,7 +71,7 @@ After a task succeeded, save it so the next run is faster:
 
 ## Errors and limits
 - An uncertain timeout/disconnect is never replayed. Inspect the phone and saved output; recover the daemon explicitly.
-- Missing/stale frames: ask the user to restore mirroring to the existing PC receiver; do not restart UxPlay automatically.
+- An old screenshot may be a still screen: inspect capture metadata. `observation_only` preserves the original frame time and is not post-action evidence. Source failure, no frame, and an explicitly reported mirroring disconnect are separate errors; a cached image alone leaves mirroring state unknown. Do not restart UxPlay automatically.
 - USB not ready: check phone unlock and the native USB cable. Port names are not permanent identities.
 - Another controller owns the board: do not inject input concurrently.
 - A firmware `ok` means submission, not a verified UI effect. Inspect the next screenshot.

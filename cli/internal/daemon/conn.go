@@ -484,9 +484,11 @@ func (c *Conn) Fresh(ctx context.Context, since time.Time, timeout time.Duration
 	deadline := time.NewTimer(timeout)
 	defer deadline.Stop()
 	for {
-		captured, _, _, wake := c.times()
-		if captured.After(since) {
-			return c.Frame()
+		c.mu.Lock()
+		img, captured, frameErr, wake := c.frame, c.captured, c.frameErr, c.wake
+		c.mu.Unlock()
+		if frameErr == nil && captured.After(since) {
+			return img
 		}
 		select {
 		case <-ctx.Done():

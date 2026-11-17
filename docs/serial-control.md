@@ -67,14 +67,18 @@ CLI 与 MCP 自动复用同一配置目录的 daemon。`ESP32AGENT_HOME` 可指�
 
 ## 独立画面通道
 
-默认复用现有 AirPlay HTTP 服务的 `/frame`，只读，不接入旧 Backend 控制路由。要求 HTTP 200、可解码 JPEG/PNG、`X-Frame-Id`、`X-Frame-Time`（Unix 秒）；204、错误状态、缺元数据、超过 5 秒或异常未来时间均不可作为新鲜画面。重复 ID 不刷新时间；操作后截图等待完成后至少 300 ms 的新帧，不以旧图冒充效果。
+默认复用现有 AirPlay HTTP 服务的 `/frame`，只读，不接入旧 Backend 控制路由。要求 HTTP 200、可解码 JPEG/PNG、`X-Frame-Id`、`X-Frame-Time`（Unix 秒）。超过 5 秒的有效截图仍可查看，返回 `capture.state=observation_only`、`after_action=false`，保留来源帧时间和 ID；重复 ID 不刷新时间。CLI JSON 与 MCP 截图文字均附带 capture 元数据，图像与元数据取自同一快照。
+
+操作后首次截图最多等待 4 秒，要求真实采集时间晚于动作完成至少 300 ms；未等到时可以返回旧图供观察，不能冒充操作后的新证据。只有满足时间条件且年龄不超过 5 秒的帧才标记 `after_action_frame`。`effect_verified` 始终为 false，新帧本身不证明动作成功；视觉定位的严格新帧等待也不接受旧帧或失联后的缓存。
+
+连接与画面年龄分别处理：来源不可达、204 无帧、错误 HTTP 状态或无效帧元数据仍报错，不用缓存掩盖来源故障。来源显式发送 `X-Mirroring-State: disconnected` 时报告投屏断开。现有服务没有可靠的手机连接事件，因此有效旧快照返回 `source_state=available`、`mirroring_state=unknown`，年龄超过五秒只标记 `freshness=unchanged_or_stale`，不推断手机已断开或仍连接。仅凭该服务保留的旧快照无法完全区分正常静止与未报告的断开。
 
 HTTP 图像源支持原 screenshot 与 MJPEG 输出；不提供 H.264 与手机音频，相应 API 明确报不支持。现有 UxPlay/取帧继续运行，不在 CLI 内重启。新机器仍需单独准备画面服务；其独立迁移不属于本轮输入通道实现。
 
 ## 当前验收
 
-2026-11-17：Go 回归 81 项通过、3 项因缺少 ffmpeg/外部模拟器而跳过，`go vet` 与 Windows 构建通过；正式 CLI `device info/net/devices` 和 MCP `initialize/device_info` 经 COM24 读到 fw 0.2.5、usb=ok、control_transport=serial。已交接临时串口桥。用户恢复投屏后，正式 CLI/MCP 的点击、双向滚屏、150 ms 按压、物件拖动及单次 --aim 通过网页可信事件和截图回归；英文键盘下精确 ASCII、退格与空格输入通过，已恢复原豆包输入法。静止超过五秒的画面仍会因新鲜度门限被拒绝，不能将这种情况直接认定为投屏断开。详见 [本轮实机回归](../task/serial-control/live-validation.md)。此前串口→USB HID 的既有实测继续有效。
+2026-11-17 首轮：Go 回归 81 项通过、3 项因缺少 ffmpeg/外部模拟器而跳过，`go vet` 与 Windows 构建通过；正式 CLI `device info/net/devices` 和 MCP `initialize/device_info` 经 COM24 读到 fw 0.2.5、usb=ok、control_transport=serial。已交接临时串口桥。用户恢复投屏后，正式 CLI/MCP 的点击、双向滚屏、150 ms 按压、物件拖动及单次 --aim 通过网页可信事件和截图回归；英文键盘下精确 ASCII、退格与空格输入通过，已恢复原豆包输入法。详见 [首轮实机回归](../task/serial-control/live-validation.md)。静止图观察修复及后续验收见 [静止截图回归](../task/serial-control/static-frame-validation.md)。此前串口→USB HID 的既有实测继续有效。
 
 本地证据位于工作区 `.runtime/serial-usb-validation/`；完整计划在 [实施计划](../task/serial-control/plan.md)。
 
-本轮可运行构建：`task/serial-control/esp32agent-serial.exe`（忽略 Git），SHA-256 `09e11c8f0d65b75c94dd226c5acd7b2ec57c144bd5f420765a0607ab795e2e34`。当前实机配置目录为工作区 `.runtime/serial-usb-cli/`，不要与其他配置目录同时占用 COM24。
+当前包含静止截图修复的构建：`task/serial-control/esp32agent-static.exe`（忽略 Git），SHA-256 `FC03EADB9C2D89B28DEE23D37685F0133405047A0E90E22A70778E53B76FBA8A`；88 项测试通过、3 项跳过，go vet 与构建通过，CLI/MCP 静止截图实机复验通过。当前实机配置目录为工作区 `.runtime/serial-usb-cli/`，不要与其他配置目录同时占用 COM24。

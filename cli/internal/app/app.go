@@ -284,6 +284,7 @@ func (a *App) screenshot(fs *flag.FlagSet, dev *string, args []string) int {
 		daemon.Response
 		Data struct {
 			Format, Data, Device string
+			Capture              map[string]any `json:"capture"`
 			Width, Height        int
 		} `json:"data"`
 	}
@@ -309,7 +310,7 @@ func (a *App) screenshot(fs *flag.FlagSet, dev *string, args []string) int {
 		return a.fail(err)
 	}
 	return a.print(daemon.Response{Status: "ok", Data: map[string]any{"format": r.Data.Format, "filePath": path,
-		"width": r.Data.Width, "height": r.Data.Height}})
+		"width": r.Data.Width, "height": r.Data.Height, "capture": r.Data.Capture}})
 }
 
 // screenshotPath: a file path as given, or screenshot-<device>-<time>.<ext> in a directory (default: cwd).

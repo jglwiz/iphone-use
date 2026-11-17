@@ -154,7 +154,7 @@ func TestHTTPFramesRequireRealMetadata(t *testing.T) {
 			}))
 			defer server.Close()
 			img, _, _, err := fetchFrame(context.Background(), server.URL)
-			if kind == "fresh" {
+			if kind == "fresh" || kind == "old" {
 				if err != nil || img == nil {
 					t.Fatal(err)
 				}

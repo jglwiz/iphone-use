@@ -129,7 +129,14 @@ func encode(img image.Image, format string, quality int, scale float64, maxSize 
 }
 
 func (s *Server) screenshot(ctx context.Context, c *Conn, req Request) Response {
-	img, err := s.frame(ctx, c)
+	var img image.Image
+	var capture map[string]any
+	var err error
+	if c.serial != nil {
+		img, capture, err = c.observationSnapshot(ctx)
+	} else {
+		img, err = s.frame(ctx, c)
+	}
 	if err != nil {
 		return fail(err)
 	}
@@ -145,10 +152,9 @@ func (s *Server) screenshot(ctx context.Context, c *Conn, req Request) Response 
 	out := map[string]any{"format": format, "data": base64.StdEncoding.EncodeToString(data),
 		"width": r.Dx(), "height": r.Dy(), "device": c.ID}
 	if c.serial != nil {
-		c.mu.Lock()
-		out["frame_time"] = float64(c.captured.UnixMilli()) / 1000
-		out["frame_id"] = c.frameID
-		c.mu.Unlock()
+		out["capture"] = capture
+		out["frame_time"] = capture["frame_time"]
+		out["frame_id"] = capture["frame_id"]
 	}
 	return ok(out)
 }
