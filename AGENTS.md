@@ -23,6 +23,7 @@ See NOTICE for details.
 
 - **Store-only sources stay out of this repository.** Never commit `HandsyStore*.swift`, `Store.xcstrings`, private App Store sources or secrets. `scripts/check-public.sh` retains the historical path guard as well as filename checks. Never stage with `git add -A`.
 - The maintained PC runtime is `cli/` + `hardware/serial_hid/` + `capture/` (independent AirPlay frames; external UxPlay). `hardware/shared_hid/` owns shared actions, mouse reports and pacing. The iOS App, legacy Python server, App harness and prompts have been removed; do not restore them as runtime dependencies.
+- Keep active local plans under `task/` and completed plans under `task/archive/`. Both `task/` and the legacy spelling `tasks/` are excluded from commits. Put durable decisions, usage and validation in `doc/dev/`, `doc/user/` or the owning module's `doc/` so published documentation works from a fresh checkout.
 
 - **Ask the maintainer before you push or open a pull request.** They control the release pace: commit locally, tell them
   what is ready, and push or open the PR only after they say so. This covers every branch and every remote.
