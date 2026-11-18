@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Handsy HID 验收</title>
+<style>
+body{font:18px system-ui;margin:16px;background:#fafafa;color:#111}
+#hud{position:sticky;top:0;background:white;border:2px solid #444;z-index:10;font-size:14px;padding:6px;overflow-wrap:anywhere}
+button,input{font:22px system-ui;padding:15px;width:95%;box-sizing:border-box;margin:12px 0}
+#mode{font:16px;padding:6px;margin:4px 0} #health.error{color:#b00020;font-weight:bold}
+#dragarea{height:200px;border:2px solid #444;position:relative;touch-action:none}
+#box{position:absolute;left:25px;top:60px;width:90px;height:70px;background:#1685cc;color:white;touch-action:none}
+.row{height:330px;border:1px solid #bbb;padding:8px;background:linear-gradient(#eee,#ddd)}
+body.static input{caret-color:transparent}
+</style>
+<div id="hud">Handsy HID 验收 · v1 <span id="tick"></span><br>
+<span id="identity">正在建立记录会话</span><br><span id="health" role="status">尚未就绪</span><br>
+<button id="mode" disabled>切换到静止模式</button></div>
+<button id="hit" disabled>CLICK COUNT: 0</button>
+<input id="input" disabled maxlength="8192" placeholder="ASCII test only" autocomplete="off" autocorrect="off" autocapitalize="off">
+<div id="dragarea"><div id="box">DRAG</div></div>
+<div class="row">ROW ONE</div><div class="row">ROW TWO</div><div class="row">ROW THREE</div><div class="row">ROW FOUR</div>
+<script src="/app.js"></script></html>

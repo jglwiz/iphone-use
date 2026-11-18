@@ -12,10 +12,14 @@ import (
 	"github.com/onehumanbeing/esp32-iphone-agent/cli/internal/seriallink"
 )
 
-type commandLink interface {
+// CommandLink is the injectable serial command connection, also used by offline
+// end-to-end fixtures. Production connections use seriallink.Open.
+type CommandLink interface {
 	Send(context.Context, string) (string, error)
 	Close() error
 }
+
+type commandLink = CommandLink
 
 func (s *Server) serialConn(ctx context.Context, selector string) (*Conn, error) {
 	s.linkMu.Lock()

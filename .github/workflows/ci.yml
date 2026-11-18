@@ -14,6 +14,17 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  hid-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Offline HID evidence server contract
+        run: python -m unittest discover -s hardware/tests/hid_acceptance -p test_server.py -v
+
   # Store-only sources never belong in this repository (scripts/check-public.sh).
   public:
     runs-on: ubuntu-latest
