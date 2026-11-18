@@ -13,6 +13,7 @@ plus history, intent_list, intent_show, intent_save, memory_recall and memory_ad
 
 ## Setup (once)
 - Build this serial branch from source. Upstream npm/installers/upgrade do not contain this implementation.
+- Use this project's [capture service](../capture/README.md) and `.venv`; the old BLE Backend is deprecated and must not be started for screenshots or input. UxPlay remains an external receiver.
 - Set `ESP32AGENT_PORT` to the verified port, e.g. COM24; `devices` only enumerates ports.
 - Set `ESP32AGENT_FRAME_URL` to the existing AirPlay HTTP `/frame` endpoint (default http://127.0.0.1:8892/frame).
 - Keep the receiver running; stop a verified temporary serial bridge before starting this daemon.

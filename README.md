@@ -13,10 +13,10 @@ Based on [ESP32 iPhone Agent](https://github.com/onehumanbeing/esp32-iphone-agen
 | 项目显示名称 | `iPhone Use` | 已更新项目文档 |
 | 项目标识／目标目录名 | `iphone-use` | 本地目录已改为 `iphone-use/`，远程仓库未改名 |
 | USB 产品名／BLE 设备名 | `iPhone Use HID` | 已构建、刷写并校验；iPhone 已显示新名称并重新配对，BLE 点击通过 |
-| AirPlay 接收器 | `iPhone Use` | 目标名称；当前外部服务仍为 `iPhone-Agent`，待服务迁移时切换 |
+| AirPlay 接收器 | `iPhone Use`（配置显示 `iPhone-Use`） | 主项目独立采集服务已启动；本机迁移状态见下方验收文档 |
 | CLI／MCP | `esp32agent` 与现有工具名称 | 保持不变，现有调用及 `ESP32AGENT_*` 配置继续使用 |
 
-上述状态记录于2026-11-18最终命名与部署。本地目录已从 `handsy-upstream/` 经 `iphone-agent/` 改为 `iphone-use/`；目录内的旧测试网页服务已迁移并恢复响应。AirPlay 服务名称在服务迁移时再切换。历史实验保留当时的 Handsy 名称及原始证据；上游项目名、许可证与作者署名也保持原样。设备名称的实现和部署检查见[双 HID 说明](hardware/serial_hid/doc/usb-ble-hid.md)。
+上述状态记录于2026-11-18最终命名与部署。本地目录已从 `handsy-upstream/` 经 `iphone-agent/` 改为 `iphone-use/`；目录内的旧测试网页服务已迁移并恢复响应。AirPlay 接收器随独立画面服务迁移改为 `iPhone-Use`。历史实验保留当时的 Handsy 名称及原始证据；上游项目名、许可证与作者署名也保持原样。设备名称的实现和部署检查见[双 HID 说明](hardware/serial_hid/doc/usb-ble-hid.md)。
 
 ## 与原始仓库有什么区别
 
@@ -30,7 +30,7 @@ Based on [ESP32 iPhone Agent](https://github.com/onehumanbeing/esp32-iphone-agen
 | 固件入口 | `hardware/hid_bridge` | `hardware/serial_hid`，复用共享 HID 动作模块 |
 | 安装方式 | 上游发布包、网页烧录器、安装脚本 | 本 fork 从源码构建；上游安装器不会安装本实现 |
 
-本 fork 已移除 iOS App、旧 Python server 及 App 专用调试工具和提示词。iPhone 无需安装本项目 App，使用系统 HID 与 AirPlay 即可。原 `hid_bridge` 仅保留用于历史固件及离线协议测试。上游 App、演示、TestFlight 和发布版本的功能，不应当作本 fork 已完成的部署或验收。参考项目的 Python 控制 Backend 没有迁入；目前只复用本机已有的独立画面服务。
+本 fork 已移除 iOS App、旧 Python server 及 App 专用调试工具和提示词。iPhone 无需安装本项目 App，使用系统 HID 与 AirPlay 即可。原 `hid_bridge` 仅保留用于历史固件及离线协议测试。上游 App、演示、TestFlight 和发布版本的功能，不应当作本 fork 已完成的部署或验收。参考项目的 Python 控制 Backend 没有迁入；独立画面服务现归属本仓库 [capture/](capture/README.md)，UxPlay 保留为外部依赖。
 
 ## 当前通信链路
 
@@ -82,6 +82,8 @@ USB 模式下，开发板的独立串口口接 PC，原生 USB/OTG 口接 iPhone
 | 画面服务 | Windows 上现有 UxPlay / HTTP 取帧服务；当前 `/frame` 地址为 `http://127.0.0.1:8892/frame` |
 
 ## 构建与使用
+
+先按 [Windows 环境与部署](doc/user/windows-setup.md) 建立本项目 `.venv` 和固件依赖，再启动 [独立画面服务](capture/README.md)。旧 BLE 项目退役的验收边界见 [迁移记录](doc/dev/reference-project-retirement.md)。
 
 在 `cli/` 目录运行：
 

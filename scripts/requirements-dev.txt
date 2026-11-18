@@ -1,0 +1,4 @@
+# Hardware/test tools; the acceptance webpage itself uses only the standard library.
+pyserial==3.5
+esptool==5.6.0
+Pillow==13.0.0

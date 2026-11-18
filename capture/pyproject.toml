@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "iphone-use-capture"
+version = "0.1.0"
+description = "Independent Windows AirPlay frame source for iPhone Use"
+requires-python = ">=3.11"
+dependencies = ["numpy==2.4.6", "opencv-python==5.0.0.93", "psutil==7.2.2"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["iphone_use_capture*"]

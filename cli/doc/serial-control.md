@@ -98,7 +98,7 @@ BLE 的同步 type 命令最多 16 字节，daemon 自动分块，避免超过�
 
 ## 独立画面通道
 
-默认复用现有 AirPlay HTTP 服务的 `/frame`，只读，不接入旧 Backend 控制路由。要求 HTTP 200、可解码 JPEG/PNG、`X-Frame-Id`、`X-Frame-Time`（Unix 秒）。超过 5 秒的有效截图仍可查看，返回 `capture.state=observation_only`、`after_action=false`，保留来源帧时间和 ID；重复 ID 不刷新时间。CLI JSON 与 MCP 截图文字均附带 capture 元数据，图像与元数据取自同一快照。
+默认使用本项目 [独立画面服务](../../capture/README.md) 的 `/frame`，只读，不接入旧 Backend 控制路由。要求 HTTP 200、可解码 JPEG/PNG、`X-Frame-Id`、`X-Frame-Time`（Unix 秒）。超过 5 秒的有效截图仍可查看，返回 `capture.state=observation_only`、`after_action=false`，保留来源帧时间和 ID；重复 ID 不刷新时间。CLI JSON 与 MCP 截图文字均附带 capture 元数据，图像与元数据取自同一快照。
 
 操作后首次截图最多等待 4 秒，要求真实采集时间晚于动作完成至少 300 ms；未等到时可以返回旧图供观察，不能冒充操作后的新证据。只有满足时间条件且年龄不超过 5 秒的帧才标记 `after_action_frame`。`effect_verified` 始终为 false，新帧本身不证明动作成功；视觉定位的严格新帧等待也不接受旧帧或失联后的缓存。
 

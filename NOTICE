@@ -16,3 +16,7 @@ work credits it visibly, for example:
 
   Based on ESP32 iPhone Agent by Henry Yuan
   https://github.com/onehumanbeing/esp32-iphone-agent
+
+The independent Windows capture module also incorporates frame/pipe code from
+the local ESP32 iPhone Agent for Windows — BLE HID project, Copyright (c) 2026
+jglwiz, under the MIT License reproduced in capture/LICENSE.
