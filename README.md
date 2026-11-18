@@ -1,123 +1,64 @@
 # iPhone Use
 
-iPhone Use 将电脑作为控制端，通过 **CLI / MCP → 串口 → ESP32-S3** 控制真实 iPhone。ESP32 同时提供 USB HID 和 BLE HID 键盘、鼠标，显式选择一路输出。USB 和 BLE 共用动作逻辑，切换输出不改变 CLI/MCP 的控制参数。
+English · [简体中文](README.zh-CN.md)
 
-Based on [ESP32 iPhone Agent](https://github.com/onehumanbeing/esp32-iphone-agent) by **Henry Yuan**. 保留原项目 MIT 许可证与版权声明，见 [LICENSE](LICENSE) 和 [NOTICE](NOTICE)。公开演示、视频及文章也应注明原项目来源。
+Control a real iPhone from Windows through a **CLI or MCP**. An ESP32-S3 acts as a keyboard and mouse over **USB HID or Bluetooth LE HID**. AirPlay streams the iPhone screen back to the PC for screenshots. This setup uses built-in iPhone features and requires no companion app.
 
-## 项目与设备名称
+## What you can do
 
-统一使用 iPhone Use，表示供 AI 调用的 iPhone 操作能力；ESP32 是当前硬件实现。HID 后缀用于在手机设置中辨认键鼠设备。
+- **Operate apps** with taps, long presses, drags, and scrolling. Use coordinates from an unscaled screenshot to select a target.
+- **Enter text and press keys** using the ESP32-S3 as a hardware keyboard.
+- **See the phone screen** through AirPlay and take screenshots with the CLI or MCP. A still frame keeps its original timestamp, so you can tell whether it was captured after an action.
+- **Use the same commands in wired or wireless mode.** The Windows PC always sends commands to the board over serial. You choose how the board sends input to the iPhone.
 
-| 用途 | 名称 | 当前状态 |
-|---|---|---|
-| 项目显示名称 | `iPhone Use` | 已更新项目文档 |
-| 项目标识／目标目录名 | `iphone-use` | 本地目录已改为 `iphone-use/`，远程仓库未改名 |
-| USB 产品名／BLE 设备名 | `iPhone Use HID` | 已构建、刷写并校验；iPhone 已显示新名称并重新配对，BLE 点击通过 |
-| AirPlay 接收器 | `iPhone Use`（配置显示 `iPhone-Use`） | 主项目独立采集服务已启动；本机迁移状态见下方验收文档 |
-| CLI／MCP | `esp32agent` 与现有工具名称 | 保持不变，现有调用及 `ESP32AGENT_*` 配置继续使用 |
+## Connect the two USB-C ports
 
-上述状态记录于2026-11-18最终命名与部署。本地目录已从 `handsy-upstream/` 经 `iphone-agent/` 改为 `iphone-use/`；目录内的旧测试网页服务已迁移并恢复响应。AirPlay 接收器随独立画面服务迁移改为 `iPhone-Use`。历史实验保留当时的 Handsy 名称及原始证据；上游项目名、许可证与作者署名也保持原样。设备名称的实现和部署检查见[双 HID 说明](hardware/serial_hid/doc/usb-ble-hid.md)。
+![Wiring diagram: PC to ESP32-S3 USB-UART in both modes; ESP32-S3 to iPhone via a second USB cable or BLE; AirPlay returns the screen to the PC.](assets/connection-modes.svg)
 
-## 与原始仓库有什么区别
+Use an ESP32-S3 board with separate **USB-UART** and **native USB / OTG** ports. The verified setup uses an ESP32-S3-WROOM-1 module with 16 MB Flash and 8 MB PSRAM.
 
-| 项目 | 原始仓库的设计 | 本 fork 当前 PC 控制实现 |
-|---|---|---|
-| 控制入口 | iPhone App 驱动板子；上游 CLI 还支持电脑通过 BLE / Wi-Fi 控板 | 电脑上的 CLI/MCP，共用一个常驻串口 daemon |
-| PC → ESP32 | BLE 命令通道及网络通道 | 独立 USB 转串口；移除 PC 蓝牙驱动与自动网络回退 |
-| ESP32 → iPhone | 原生 USB HID | USB HID **或**标准 BLE HID；两接口可共存，每条命令只发一路 |
-| 鼠标控制 | 上游包含相对移动、归位和校准流程 | PC 路径使用原生绝对坐标，位置、按钮和滚轮报告分离 |
-| 屏幕返回 | 上游固件/App 的 AirPlay、视频传输路径 | iPhone AirPlay → PC 接收器 → 独立 HTTP 取帧服务 |
-| 固件入口 | `hardware/hid_bridge` | `hardware/serial_hid`，复用共享 HID 动作模块 |
-| 安装方式 | 上游发布包、网页烧录器、安装脚本 | 本 fork 从源码构建；上游安装器不会安装本实现 |
+| Board port | Connect it to | When to use it |
+| --- | --- | --- |
+| **USB-UART** (USB-to-serial bridge) | **Windows PC**, using a USB data cable | Keep it connected for board power, firmware flashing, serial logs, and CLI/MCP commands. |
+| **Native USB / OTG** | **iPhone**, using a USB data cable | Connect it for wired USB HID. For BLE HID it can stay unplugged; the ESP32 pairs directly with the iPhone. |
 
-本 fork 已移除 iOS App、旧 Python server 及 App 专用调试工具和提示词。iPhone 无需安装本项目 App，使用系统 HID 与 AirPlay 即可。原 `hid_bridge` 仅保留用于历史固件及离线协议测试。上游 App、演示、TestFlight 和发布版本的功能，不应当作本 fork 已完成的部署或验收。参考项目的 Python 控制 Backend 没有迁入；独立画面服务现归属本仓库 [capture/](capture/README.md)，UxPlay 保留为外部依赖。
+**For firmware development**, connect USB-UART to the PC first and leave the native port free. Close the CLI daemon or serial monitor before flashing so the flashing tool can open the port. To test USB HID, leave USB-UART connected to the PC and connect the native port to the iPhone with a second data cable. Keep a single host on the native USB link.
 
-## 当前通信链路
+If the board has unclear labels, check its pinout or connect one port at a time and identify the **USB-to-serial bridge** in Windows Device Manager. Some native USB configurations also expose a COM port, so the presence of a COM number alone is insufficient. See [Espressif's port reference](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/user_guide_v1.1.html) for the two port roles.
 
-```text
-                            ┌─ USB HID ─→ iPhone
-PC CLI / MCP → Serial → ESP32
-                            └─ BLE HID ─→ iPhone
+<img src="assets/esp32-s3-dual-usb-c.png" width="560" alt="Original illustration of an ESP32-S3 development board with two USB-C sockets">
 
-iPhone → AirPlay → PC UxPlay / 取帧服务 → CLI / MCP 截图
-```
+*Original board illustration. Identify the ports by function and your board's markings.*
 
-这里的 BLE 是 **ESP32 模拟蓝牙键盘和鼠标供 iPhone 使用**，不是电脑通过蓝牙向开发板发送命令。电脑到开发板始终使用串口。
+## Quick start on Windows
 
-默认输出 USB。USB 可操作手机设置，完成本设备的 BLE 配对、取消配对及重新配对；之后显式切换到 BLE。BLE 不可用时拒绝输入，不自动转到 USB，也不自动重放结果未知的命令。两路不能同时发送同一动作。
-
-USB 模式下，开发板的独立串口口接 PC，原生 USB/OTG 口接 iPhone；不能把同一个原生 USB 口同时接两个主机。BLE 模式下，板子通过无线 HID 向手机发送输入，PC 串口连接保持不变。
-
-## 本 fork 修复和调整的 HID 行为
-
-- **绝对定位与点击分离**：位置报告使用 0–32767 绝对坐标；按钮按下/释放不再附带缓存坐标，避免点击时重新发送位置。当前布局中位置、按钮、滚轮分别使用报告 10、11、12。
-- **修复实测点击兼容问题**：本机对照中，上游合并报告布局没有产生完整点击事件；分离布局产生了可信的按下、松开和点击事件。普通点击与有限按压分别验证。
-- **修复有滚轮事件但页面不滚动的问题**：将实测有效的连续滚轮节奏放入固件，提供 `scroll_by -4..4`。正数向下、负数向上；数值是动作量，不是像素。页面滚动与按住拖动物件分开处理。
-- **共用动作模块**：USB/BLE 复用 `hardware/shared_hid/actions.h`、`abs_mouse.h` 和 pacing 实现。BLE Report Map 直接由同一组 USB 描述符组成，没有另建一套坐标或点击算法。
-- **BLE 键盘时序适配**：先建立修饰键，再发送字符，按顺序释放字符与修饰键；BLE 文本每条最多16字节，daemon 自动分块。已验证 ASCII、Shift 字符、空格及退格；汉字转拼音仍依赖手机输入法。
-- **连接和释放处理**：区分 USB 状态与 BLE 连接、加密、报告订阅状态；提供设备、启动和连接代次标识。有限按压到期释放，切换输出时不允许带着按下状态过去。
-
-这些是有界实机验证支持的修正，不表示所有 iPhone、方向、应用和系统版本都已覆盖。
-
-## 截图行为修正
-
-静止画面超过5秒仍可供查看，保留真实 `frame_time` 和 `frame_id`，标记为 `observation_only`、`after_action=false`。旧帧不能冒充操作后的新帧，也不能作为自动重试输入的理由。
-
-来源不可达、无帧以及来源明确报告投屏断开分别处理。目前取帧服务没有可靠的手机连接事件时，返回 `mirroring_state=unknown`；不能仅凭旧快照判断手机已断开或仍在投屏。截图新鲜也不自动证明输入生效。
-
-## 实测硬件与软件
-
-以下是2026-11-17双 HID 实验与正式 CLI/MCP 回归所用环境，不是通用兼容性承诺。
-
-| 项目 | 实测配置 |
-|---|---|
-| 手机 | **iPhone 17e**（用户确认） |
-| iOS 版本 / 构建号 | **iOS 26（用户回忆，待在本机确认）；具体小版本及构建号待补录** |
-| 开发板 | ESP32-S3-WROOM-1 模组、双 Type-C（独立串口与原生 USB）；PCB 厂商及型号未确认 |
-| 芯片与存储 | ESP32-S3 revision 0.2，16 MB Flash、8 MB PSRAM；容量对应 N16R8，完整模组订货型号尚未核对丝印 |
-| PC 串口 | 当前为 COM24，115200、8N1；端口号不是永久设备身份 |
-| 手机设置 | 辅助触控开启；精确 ASCII 测试临时使用 English (US)，结束恢复豆包中文输入法 |
-| 双 HID 固件 | `hardware/serial_hid`，版本 `0.3.1-serial`；[Shift调查与验证边界](hardware/serial_hid/doc/usb-keyboard-shift.md) |
-| 构建依赖 | ESP32 Arduino 3.3.12、NimBLE-Arduino 2.3.8 |
-| 画面服务 | Windows 上现有 UxPlay / HTTP 取帧服务；当前 `/frame` 地址为 `http://127.0.0.1:8892/frame` |
-
-## 构建与使用
-
-先按 [Windows 环境与部署](doc/user/windows-setup.md) 建立本项目 `.venv` 和固件依赖，再启动 [独立画面服务](capture/README.md)。旧 BLE 项目退役的验收边界见 [迁移记录](doc/dev/reference-project-retirement.md)。
-
-在 `cli/` 目录运行：
+1. Set up the [Windows environment](doc/user/windows-setup.md), build the [serial HID firmware](hardware/serial_hid/README.md), and flash it through USB-UART. The build script only compiles.
+2. Start the [AirPlay capture service](capture/README.md). On the iPhone, use Control Center → Screen Mirroring and select the configured receiver (typically `iPhone-Use`).
+3. Wire the board for USB HID or pair `iPhone Use HID` on the iPhone under Settings → Accessibility → Touch → AssistiveTouch → Devices → Bluetooth Devices. Enable AssistiveTouch for pointer control. For BLE HID, select `ble` in the setup below.
+4. From the repository root, build the CLI and check the connection. Use the COM number for the bridge on your PC.
 
 ```powershell
-go test ./...
-go build -o esp32agent.exe ./cmd/esp32agent
-$env:ESP32AGENT_PORT = 'COM24' # 先核对实际端口
-$env:ESP32AGENT_HID_OUTPUT = 'usb' # usb 或 ble
+Push-Location cli
+go build -o ../.runtime/bin/esp32agent.exe ./cmd/esp32agent
+Pop-Location
+
+$agent = ".\.runtime\bin\esp32agent.exe"
+& $agent devices
+$env:ESP32AGENT_PORT = 'COM24'                  # Replace with your USB-UART port.
+$env:ESP32AGENT_HID_OUTPUT = 'usb'              # usb or ble
 $env:ESP32AGENT_FRAME_URL = 'http://127.0.0.1:8892/frame'
-./esp32agent.exe device info
-./esp32agent.exe screenshot --output screen.png
-./esp32agent.exe mcp
+& $agent device info
+& $agent screenshot --output screen.png
 ```
 
-CLI/MCP 复用同一 daemon，串口只能有一个拥有者。切换输出时先执行 `./esp32agent.exe daemon stop`，修改 `ESP32AGENT_HID_OUTPUT`，再启动 CLI/MCP。不要同时运行临时桥、串口监视器或另一配置目录的 daemon。
+For an MCP client, run the same executable with the `mcp` argument and pass it the same environment variables. When switching wired and BLE output, stop the current daemon with `esp32agent daemon stop` before changing `ESP32AGENT_HID_OUTPUT`. The [CLI guide](cli/README.md) lists commands and MCP tools.
 
-BLE 首次配对使用手机的“设置 → 辅助功能 → 触控 → 辅助触控 → 设备 → 蓝牙设备”，选择 `iPhone Use HID`。旧固件或已缓存的配对可能仍显示 `iPhone Agent HID` / `Handsy Serial HID` / `Handsy-BLE-Lab`；新名称需要部署新固件后生效。USB 可以完成这段手机操作；`device pair/unpair` 兼容入口不负责修改手机的 BLE HID 配对。
+## Hardware verification
 
-固件构建使用 [hardware/build-serial.ps1](hardware/build-serial.ps1)，具体参数、接线与部署步骤见 [串口控制说明](cli/doc/serial-control.md)。脚本只构建，不自动烧录；部署必须核对板子及实际分区、保留有效备份。本机验证仅更新应用分区，保留 NVS 配对资料，不能把本机地址直接用于其他板子。
+Both HID outputs have been tested on physical hardware for clicking, scrolling, keyboard input, pressing, and dragging. BLE testing also covered operation with the iPhone USB cable unplugged and recovery after re-pairing. BLE input is rejected when the connection is unavailable. See the [dual HID results](hardware/serial_hid/doc/validation.md), [keyboard investigation](hardware/serial_hid/doc/usb-keyboard-shift.md), and [independent capture validation](doc/dev/reference-project-retirement.md) for the exact conditions and test limits.
 
-现有 `tap`、`longpress`、`swipe`、`type_text`、`press_key`、`press_button`、`screenshot` 等控制 API 保留；新增 `scroll(amount)` 对应 `io scroll AMOUNT`。坐标按未缩放截图像素传入，底层转换为绝对 HID 坐标。`swipe` 是按住拖动，页面滚屏使用 `scroll`。
+## How it differs from upstream
 
-## 验证范围与记录
+This project builds on [ESP32 iPhone Agent](https://github.com/onehumanbeing/esp32-iphone-agent) by **Henry Yuan**. It uses Windows CLI/MCP with a serial command link, shared USB/BLE HID firmware, and an independent AirPlay capture service. The HID implementation separates pointer position, buttons, and scrolling and uses absolute coordinates. See the [firmware design](hardware/serial_hid/doc/usb-ble-hid.md) and [serial protocol](cli/doc/serial-control.md) for details.
 
-已完成 USB 自动引导 BLE 配对、清理和重配；正式 CLI/MCP 的 USB/BLE 点击及双向滚动通过。BLE 的多点定位、重复同点、键盘、20位文本分块、有限按压和拖动物件均有新帧或网页可信事件支持。BLE 用例中报告数增加、USB 调用数不变，确认输入没有走错通路。
-
-正式整合时 Go 回归106项通过、3项因 ffmpeg/外部模拟器缺失跳过，`go vet`、Windows 构建及原 USB 固件编译回归通过。静止8秒后的 CLI/MCP 截图保留原帧时间，观察图标记复验通过。
-
-断连后的实机负向验收以最新验证记录为准，不将自动化状态测试当作实机通过。全屏边缘、物理旋转、锁屏、长期稳定性以及跨设备/跨 iOS 版本覆盖仍需单独验收。命令回执仅表示固件处理结果，不等于手机效果已确认。
-
-- [双 HID 验收记录](hardware/serial_hid/doc/validation.md)
-- [共享 HID 模块设计](hardware/shared_hid/doc/design.md)
-- [USB HID 实验记录](hardware/hid_bridge/doc/usb-hid-validation.md)
-- [CLI 使用说明](cli/README.md)
-- [通信协议、配置及截图语义](cli/doc/serial-control.md)
-
-本 fork 保留上游源码与署名；上游项目及其历史介绍请参阅 [ESP32 iPhone Agent by Henry Yuan](https://github.com/onehumanbeing/esp32-iphone-agent)。本页描述的是当前 fork 的串口双 HID 实现。
+Keep the upstream attribution in public demos, videos, and articles. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
