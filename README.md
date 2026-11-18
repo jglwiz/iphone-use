@@ -1,8 +1,22 @@
-# ESP32 iPhone Agent — 串口双 HID Fork
+# iPhone Agent
 
-这个 fork 将电脑作为控制端，通过 **CLI / MCP → 串口 → ESP32-S3** 控制真实 iPhone。ESP32 同时提供 USB HID 和 BLE HID 键盘、鼠标，显式选择一路输出。USB 和 BLE 共用动作逻辑，切换输出不改变 CLI/MCP 的控制参数。
+iPhone Agent 将电脑作为控制端，通过 **CLI / MCP → 串口 → ESP32-S3** 控制真实 iPhone。ESP32 同时提供 USB HID 和 BLE HID 键盘、鼠标，显式选择一路输出。USB 和 BLE 共用动作逻辑，切换输出不改变 CLI/MCP 的控制参数。
 
 Based on [ESP32 iPhone Agent](https://github.com/onehumanbeing/esp32-iphone-agent) by **Henry Yuan**. 保留原项目 MIT 许可证与版权声明，见 [LICENSE](LICENSE) 和 [NOTICE](NOTICE)。公开演示、视频及文章也应注明原项目来源。
+
+## 项目与设备名称
+
+统一使用 iPhone Agent，覆盖 USB、BLE 与 AirPlay；HID 后缀用于在手机设置中辨认键鼠设备。
+
+| 用途 | 名称 | 当前状态 |
+|---|---|---|
+| 项目显示名称 | `iPhone Agent` | 已更新项目文档 |
+| 项目标识／目标目录名 | `iphone-agent` | 本地目录仍为 `handsy-upstream/`，远程仓库未改名 |
+| USB 产品名／BLE 设备名 | `iPhone Agent HID` | 源码已更新、构建通过，尚未刷写设备或验证新广播名称 |
+| AirPlay 接收器 | `iPhone Agent` | 目标名称；当前外部服务仍为 `iPhone-Agent`，待服务迁移时切换 |
+| CLI／MCP | `esp32agent` 与现有工具名称 | 保持不变，现有调用及 `ESP32AGENT_*` 配置继续使用 |
+
+上述状态记录于2026-11-18本次命名变更。目录与服务名称分阶段切换，避免打断正在使用的路径和投屏。历史实验保留当时的 Handsy 名称及原始证据；上游项目名、许可证与作者署名也保持原样。设备名称的实现和部署检查见[双 HID 说明](hardware/serial_hid/doc/usb-ble-hid.md)。
 
 ## 与原始仓库有什么区别
 
@@ -84,7 +98,7 @@ $env:ESP32AGENT_FRAME_URL = 'http://127.0.0.1:8892/frame'
 
 CLI/MCP 复用同一 daemon，串口只能有一个拥有者。切换输出时先执行 `./esp32agent.exe daemon stop`，修改 `ESP32AGENT_HID_OUTPUT`，再启动 CLI/MCP。不要同时运行临时桥、串口监视器或另一配置目录的 daemon。
 
-BLE 首次配对使用手机的“设置 → 辅助功能 → 触控 → 辅助触控 → 设备 → 蓝牙设备”，选择 `Handsy Serial HID`。已有实验配对可能缓存名称 `Handsy-BLE-Lab`。USB 可以完成这段手机操作；`device pair/unpair` 兼容入口不负责修改手机的 BLE HID 配对。
+BLE 首次配对使用手机的“设置 → 辅助功能 → 触控 → 辅助触控 → 设备 → 蓝牙设备”，选择 `iPhone Agent HID`。旧固件或已缓存的配对可能仍显示 `Handsy Serial HID` / `Handsy-BLE-Lab`；新名称需要部署新固件后生效。USB 可以完成这段手机操作；`device pair/unpair` 兼容入口不负责修改手机的 BLE HID 配对。
 
 固件构建使用 [hardware/build-serial.ps1](hardware/build-serial.ps1)，具体参数、接线与部署步骤见 [串口控制说明](cli/doc/serial-control.md)。脚本只构建，不自动烧录；部署必须核对板子及实际分区、保留有效备份。本机验证仅更新应用分区，保留 NVS 配对资料，不能把本机地址直接用于其他板子。
 

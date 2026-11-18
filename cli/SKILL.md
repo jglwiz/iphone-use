@@ -17,7 +17,7 @@ plus history, intent_list, intent_show, intent_save, memory_recall and memory_ad
 - Set `ESP32AGENT_FRAME_URL` to the existing AirPlay HTTP `/frame` endpoint (default http://127.0.0.1:8892/frame).
 - Keep the receiver running; stop a verified temporary serial bridge before starting this daemon.
 - Set `ESP32AGENT_HID_OUTPUT=usb` (default) or `ble`; stop the daemon before changing configuration. `device info` reports `control_transport=serial` and the actual output. USB requires `usb=ok`; BLE requires `ble_ready`, `ble_connected`, `ble_encrypted`, `ready` true and no fault. No PC Bluetooth pairing.
-- Pair the iPhone through AssistiveTouch → Devices → Bluetooth Devices; USB can guide pairing. Only manage the intended Handsy HID device. BLE failure never falls back to USB.
+- Pair the iPhone through AssistiveTouch → Devices → Bluetooth Devices; USB can guide pairing. Only manage the intended iPhone Agent HID device (older firmware or cached pairings may show Handsy Serial HID or Handsy-BLE-Lab). BLE failure never falls back to USB.
 - `calibrate` only reports native absolute mode; it does not generate verified calibration.
 
 ## The loop

@@ -1,6 +1,8 @@
-# 串口双 HID 固件
+# iPhone Agent 串口双 HID 固件
 
 PC → Serial0（115200）→ ESP32-S3 → USB HID 或 BLE HID → iPhone。
+
+USB/BLE 设备名称为 `iPhone Agent HID`；新名称须部署固件后才会在设备端生效。
 
 这是PC串口控制的正式固件入口。USB/BLE共用成熟的动作引擎，显式选择一路输出，CLI/MCP控制API保持一致。
 

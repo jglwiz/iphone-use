@@ -16,6 +16,8 @@
 #define HID_TRACE 0
 #include "../shared_hid/pace.h"
 
+constexpr char HID_DEVICE_NAME[] = "iPhone Agent HID";
+
 // Exactly one output for each command. No radio command characteristics exist.
 bool useBLE = false, reportFailed = false, clearing = false, linkFault = false;
 bool advertisingConfigured=false, advertisingStarted=false;
@@ -165,7 +167,7 @@ class SuspendCallbacks : public NimBLECharacteristicCallbacks {
 String statusJSON() {
   cJSON *j=cJSON_CreateObject();
   cJSON_AddStringToObject(j,"fw","0.3.1-serial");
-  cJSON_AddStringToObject(j,"name","Handsy Serial HID");
+  cJSON_AddStringToObject(j,"name",HID_DEVICE_NAME);
   cJSON_AddStringToObject(j,"boot_id",bootId.c_str());
   cJSON_AddStringToObject(j,"device_id",deviceId.c_str());
   cJSON_AddStringToObject(j,"hid_output",useBLE?"ble":"usb");
@@ -182,7 +184,7 @@ String statusJSON() {
   cJSON_AddStringToObject(j,"ble_address",NimBLEDevice::getAddress().toString().c_str());
   cJSON_AddStringToObject(j,"advertisement",adv->getAdvertisementData().toString().c_str());
   // NimBLE 2.3.8 getScanData() incorrectly returns advertising data; do not report it as on-air scan data.
-  cJSON_AddStringToObject(j,"scan_response_name_configured","Handsy Serial HID");
+  cJSON_AddStringToObject(j,"scan_response_name_configured",HID_DEVICE_NAME);
   cJSON_AddNumberToObject(j,"connection_generation",generation);
   cJSON_AddNumberToObject(j,"disconnect_reason",disconnectReason);
   cJSON_AddNumberToObject(j,"auth_events",authEvents);
@@ -241,15 +243,15 @@ void setup() {
   char id[17]; snprintf(id,sizeof(id),"%08lx%08lx",(unsigned long)esp_random(),(unsigned long)esp_random()); bootId=id;
   uint8_t mac[6]; esp_read_mac(mac,ESP_MAC_BT);
   for (auto b:mac) { char hex[3]; snprintf(hex,3,"%02x",b); deviceId+=hex; }
-  mouse.begin(); usbKeyboard.begin(); usbConsumer.begin(); USB.productName("Handsy Serial HID"); USB.begin();
-  NimBLEDevice::init("Handsy Serial HID");
+  mouse.begin(); usbKeyboard.begin(); usbConsumer.begin(); USB.productName(HID_DEVICE_NAME); USB.begin();
+  NimBLEDevice::init(HID_DEVICE_NAME);
   // Stable dedicated HID identity; never reuse the old command-service identity.
   uint8_t address[]={mac[5],mac[4],mac[3],mac[2],mac[1],uint8_t((mac[0]^0x35)|0xc0)};
   if (!NimBLEDevice::setOwnAddr(address) || !NimBLEDevice::setOwnAddrType(BLE_OWN_ADDR_RANDOM)) { Serial0.println("fatal BLE identity"); return; }
   NimBLEDevice::setSecurityIOCap(BLE_HS_IO_NO_INPUT_OUTPUT);
   NimBLEDevice::setSecurityAuth(true,false,true);
   auto *server=NimBLEDevice::createServer(); server->setCallbacks(new PeerCallbacks()); server->advertiseOnDisconnect(true);
-  bleHid=new NimBLEHIDDevice(server); bleHid->setManufacturer("Handsy"); bleHid->setHidInfo(0,1);
+  bleHid=new NimBLEHIDDevice(server); bleHid->setManufacturer("iPhone Agent"); bleHid->setHidInfo(0,1);
   // HOGP requires a populated seven-byte PnP ID, not an empty characteristic.
   bleHid->setPnp(1,0xffff,1,1); // Development identity; no borrowed commercial keyboard ID.
   // Use the descriptors registered by the existing USB devices, unchanged.
@@ -267,10 +269,10 @@ void setup() {
   auto *adv=NimBLEDevice::getAdvertising();
   advertisingConfigured=adv->setAppearance(HID_KEYBOARD);
   advertisingConfigured=adv->addServiceUUID(bleHid->getHidService()->getUUID()) && advertisingConfigured;
-  advertisingConfigured=adv->setName("Handsy Serial HID") && advertisingConfigured;
+  advertisingConfigured=adv->setName(HID_DEVICE_NAME) && advertisingConfigured;
   adv->enableScanResponse(true);
   // Both packets identify this HID device. Keep connection hints out of scan response.
-  advertisingConfigured=adv->setName("Handsy Serial HID") && advertisingConfigured;
+  advertisingConfigured=adv->setName(HID_DEVICE_NAME) && advertisingConfigured;
   advertisingStarted=advertisingConfigured && NimBLEDevice::startAdvertising();
 }
 void loop() {

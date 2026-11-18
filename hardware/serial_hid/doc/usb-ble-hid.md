@@ -28,7 +28,7 @@ BLE就绪必须满足连接、加密、全部输入报告订阅及未挂起；�
 
 ## 构建与首次配对
 
-正式入口是 `hardware/serial_hid`，共享 `hardware/shared_hid/actions.h`、`abs_mouse.h` 和 pace 模块；旧 `hid_bridge` 仅保留历史固件与协议测试，不是当前部署入口。新入口只有串口命令输入和标准 BLE HID 服务，不提供 PC 蓝牙命令服务。默认 USB；BLE 广播名为 `Handsy Serial HID`。沿用实验稳定地址与相同报告布局，已有手机可能缓存旧名称 `Handsy-BLE-Lab`。
+正式入口是 `hardware/serial_hid`，共享 `hardware/shared_hid/actions.h`、`abs_mouse.h` 和 pace 模块；旧 `hid_bridge` 仅保留历史固件与协议测试，不是当前部署入口。新入口只有串口命令输入和标准 BLE HID 服务，不提供 PC 蓝牙命令服务。默认 USB；USB 产品名、BLE 广播名与状态中的设备名称统一为 `iPhone Agent HID`，由 `HID_DEVICE_NAME` 常量维护。沿用实验稳定地址与相同报告布局，新名称需刷写新固件后生效；已有手机可能缓存旧名称 `Handsy Serial HID` 或 `Handsy-BLE-Lab`。本次命名不改变设备地址、配对存储及 HID 报告布局。
 
 已验证的依赖为 ESP32 Arduino 3.3.12、NimBLE-Arduino 2.3.8。在仓库根构建：
 
@@ -41,3 +41,12 @@ ToolsDir 内为 arduino-cli/arduino-cli.exe、arduino-cli.yaml、arduino-data �
 首次配对：以 USB 控制 iPhone，打开设置 → 辅助功能 → 触控 → 辅助触控 → 设备 → 蓝牙设备，选择本设备并确认系统配对弹窗；然后等 BLE 全部订阅及加密完成。只管理已核实的本设备。普通蓝牙设置列表不一定展示相同条目。USB 完成配对后，停止 daemon，设置 `ESP32AGENT_HID_OUTPUT=ble`，再运行原 CLI 或 MCP；切回 USB 同样先停止 daemon 再改为 usb。双接口可共存，但一个命令不会同时发送两路。
 
 PnP采用开发身份，不声称商业设备身份。配对失败先保存实际状态；不能只凭手机列表“已连接”判断成功。
+
+
+## 设备命名变更的验证边界
+
+2026-11-18将产品名称统一为 `iPhone Agent HID`，BLE Manufacturer 字符串改为 `iPhone Agent`。USB 产品名、BLE 初始化／广播名及状态返回使用同一常量，避免界面名称与诊断信息不一致。上游版权及许可证保留，历史验收中的 Handsy 名称不回写成新名称。
+
+本次使用上述 ESP32 Arduino 3.3.12 与 NimBLE-Arduino 2.3.8 构建通过，差异空白检查通过。产物为669696字节，SHA256 `2a4f8ae892fd84ebf1f647b7089f21d4815d86a7c3465330d8fd280d513af2ca`；本地构建目录为工作区 `.runtime/iphone-agent-naming-build/`。版本字段仍为 `0.3.1-serial`，因此区分此前实机验证镜像与命名变更镜像时应核对哈希，不能只看版本号。
+
+本次未刷写、未操作手机配对、未重启 AirPlay，不能据编译结果宣称手机已显示新名称。部署后的验收需要核对串口状态中的名称和设备身份、实际 BLE 广播／手机显示，以及 USB/BLE 基本控制。若手机仍显示旧名，先区分旧固件与名称缓存；不为改显示名称自动清除配对。AirPlay 命名属于外部接收服务配置，不由本固件控制。
