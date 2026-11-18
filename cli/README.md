@@ -1,10 +1,10 @@
-# iPhone Agent CLI — esp32agent
+# iPhone Use CLI — esp32agent
 
 English · [简体中文](README.zh-CN.md)
 
 This branch uses **PC CLI/MCP → Serial Port → ESP32 → USB / BLE HID → iPhone**. USB and BLE HID coexist with one explicitly selected output and the same control API. The PC Bluetooth driver and automatic network fallback have been removed. The reference Python control Backend is not imported.
 
-The project is named **iPhone Agent**; the executable remains `esp32agent`, with unchanged MCP tool names and `ESP32AGENT_*` configuration. USB/BLE firmware now uses `iPhone Agent HID`; deployment and cached names are covered in [device naming and pairing](doc/serial-control.md#固件与配对). See the [project README](../README.md) for directory and AirPlay naming status.
+The project is named **iPhone Use**; the executable remains `esp32agent`, with unchanged MCP tool names and `ESP32AGENT_*` configuration. USB/BLE firmware now uses `iPhone Use HID`; deployment and cached names are covered in [device naming and pairing](doc/serial-control.md#固件与配对). See the [project README](../README.md) for directory and AirPlay naming status.
 
 ## Build and configure
 

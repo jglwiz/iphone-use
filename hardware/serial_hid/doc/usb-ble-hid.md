@@ -28,7 +28,7 @@ BLE就绪必须满足连接、加密、全部输入报告订阅及未挂起；�
 
 ## 构建与首次配对
 
-正式入口是 `hardware/serial_hid`，共享 `hardware/shared_hid/actions.h`、`abs_mouse.h` 和 pace 模块；旧 `hid_bridge` 仅保留历史固件与协议测试，不是当前部署入口。新入口只有串口命令输入和标准 BLE HID 服务，不提供 PC 蓝牙命令服务。默认 USB；USB 产品名、BLE 广播名与状态中的设备名称统一为 `iPhone Agent HID`，由 `HID_DEVICE_NAME` 常量维护。沿用实验稳定地址与相同报告布局，新名称需刷写新固件后生效；已有手机可能缓存旧名称 `Handsy Serial HID` 或 `Handsy-BLE-Lab`。本次命名不改变设备地址、配对存储及 HID 报告布局。
+正式入口是 `hardware/serial_hid`，共享 `hardware/shared_hid/actions.h`、`abs_mouse.h` 和 pace 模块；旧 `hid_bridge` 仅保留历史固件与协议测试，不是当前部署入口。新入口只有串口命令输入和标准 BLE HID 服务，不提供 PC 蓝牙命令服务。默认 USB；USB 产品名、BLE 广播名与状态中的设备名称统一为 `iPhone Use HID`，由 `HID_DEVICE_NAME` 常量维护。沿用实验稳定地址与相同报告布局，新名称需刷写新固件后生效；已有手机可能缓存旧名称 `iPhone Agent HID`、`Handsy Serial HID` 或 `Handsy-BLE-Lab`。本次命名不改变设备地址、配对存储及 HID 报告布局。
 
 已验证的依赖为 ESP32 Arduino 3.3.12、NimBLE-Arduino 2.3.8。在仓库根构建：
 
@@ -49,4 +49,28 @@ PnP采用开发身份，不声称商业设备身份。配对失败先保存实�
 
 本次使用上述 ESP32 Arduino 3.3.12 与 NimBLE-Arduino 2.3.8 构建通过，差异空白检查通过。产物为669696字节，SHA256 `2a4f8ae892fd84ebf1f647b7089f21d4815d86a7c3465330d8fd280d513af2ca`；本地构建目录为工作区 `.runtime/iphone-agent-naming-build/`。版本字段仍为 `0.3.1-serial`，因此区分此前实机验证镜像与命名变更镜像时应核对哈希，不能只看版本号。
 
-本次未刷写、未操作手机配对、未重启 AirPlay，不能据编译结果宣称手机已显示新名称。部署后的验收需要核对串口状态中的名称和设备身份、实际 BLE 广播／手机显示，以及 USB/BLE 基本控制。若手机仍显示旧名，先区分旧固件与名称缓存；不为改显示名称自动清除配对。AirPlay 命名属于外部接收服务配置，不由本固件控制。
+初次命名提交只完成构建，未部署。后续部署记录见下文。其他设备部署后仍需核对串口状态中的名称和设备身份、实际 BLE 广播／手机显示，以及 USB/BLE 基本控制。若手机仍显示旧名，先区分旧固件与名称缓存；不为改显示名称自动清除配对。AirPlay 命名属于外部接收服务配置，不由本固件控制。
+
+
+### 2026-11-18中间名称 iPhone Agent 的部署与重新配对
+
+用户明确要求删除旧 BLE 设备、重新烧录并重新连接。通过正式 CLI 的 USB 输出在 iPhone 辅助触控蓝牙列表中“忽略”目标 `Handsy Serial HID`，随后板端确认 BLE 断开。只操作该 HID 配对，没有修改其他设备或关闭手机蓝牙。
+
+核对 COM24 芯片 MAC `cc:68:c7:b0:85:18`、16 MB Flash，读取当前分区表及 OTA 数据，与既有完整备份一致；核验备份及上述新镜像哈希后，仅写 `app0`（0x10000），独立 `verify-flash` digest 匹配。NVS、分区表、OTA 数据保留。新启动 `2577771f3bb42a3d`，设备身份 `cc68c7b08519` 不变，状态与广播数据均为 `iPhone Agent HID`。
+
+USB 控制完成新的配对弹窗确认。最初蓝牙列表及弹窗仍显示缓存旧名；重新配对并再次进入列表后，实际显示 `iPhone Agent HID`、已连接。无需改变 BLE 地址或重启手机蓝牙。最终 BLE 已连接、加密、订阅7186、ready=true、bond_count=1、held=0。显式切换到 BLE 后点击进入蓝牙列表成功，BLE 报告3→6，USB 调用27不变；当前保留 BLE 输出，USB 仍就绪，原 AirPlay 未重启。该检查是命名部署后的基本连接／点击验证，不代替完整键盘、滚动或稳定性回归。
+
+本机证据位于工作区 `.runtime/iphone-agent-rename-deploy/`：`write.log`、`verify.log`、`flashed-status.json`、`paired-ready.json`、`ble-before.json`、`ble-after.json`、`24-final.png` 及 `final-frame.json`。名称变更未改变 CLI/MCP API，本地仓库目录已改为 `iphone-agent/`；AirPlay 服务名称尚未切换。
+
+
+### 最终名称 iPhone Use 与再次部署
+
+用户最终选定 **iPhone Use**，项目目录为 `iphone-use/`，USB/BLE 名称为 `iPhone Use HID`，BLE Manufacturer 为 `iPhone Use`。名称表达供 AI 调用的手机操作能力，ESP32 保留为实现说明；CLI 可执行命令 `esp32agent`、MCP 工具、控制参数与环境变量均不变。前文 iPhone Agent 镜像和截图是中间阶段证据，不能当作最终名称的验证结果。
+
+本地目录改名后，已核实的旧测试服务 `task/usb-hid-drag/lab/probe.py` 从新路径启动，192.168.100.10:8902 返回 HTTP 200；Git 历史和原有未提交／暂存状态保留，远程仓库未改名。AirPlay 的目标名称为 `iPhone Use`，当前外部服务仍为 `iPhone-Agent`，本次未重启或迁移它。
+
+使用相同工具链构建通过，镜像669696字节，SHA256 `0b2af972603d75df8f437d9591b090bc5a48f74e7c5dfeff6685a3dd5e9afc11`。先用 USB 在手机上删除中间名称的 BLE 配对，核对同一芯片、分区表、OTA 选择和恢复备份，仅烧录 app0 后独立校验通过。设备身份及 BLE 地址不变，新 boot 为 `09e03dc8fdbdd2b0`。再次通过 USB 确认配对，手机列表从缓存旧名刷新为 `iPhone Use HID`、已连接。
+
+最终 BLE 连接、加密和全部订阅7186就绪，held=0。BLE 点击打开蓝牙列表成功，报告3→6、USB调用21不变。当前保留 BLE 输出，USB 同时就绪，AirPlay 返回新帧。该轮只验证改名后的构建、部署、配对和基本点击，未重复完整键盘／滚动回归。
+
+本地证据：工作区 `.runtime/iphone-use-deploy/` 内的 `build.json`、`partition-read.log`、`write.log`、`verify.log`、`flashed.json`、`paired.json`、`ble-before.json`、`ble-after.json`、`14-final.png` 和 `final-frame.json`；构建日志为 `.runtime/iphone-use-build.log`。历史证据路径保留原名，不批量重写。

@@ -16,7 +16,7 @@
 #define HID_TRACE 0
 #include "../shared_hid/pace.h"
 
-constexpr char HID_DEVICE_NAME[] = "iPhone Agent HID";
+constexpr char HID_DEVICE_NAME[] = "iPhone Use HID";
 
 // Exactly one output for each command. No radio command characteristics exist.
 bool useBLE = false, reportFailed = false, clearing = false, linkFault = false;
@@ -251,7 +251,7 @@ void setup() {
   NimBLEDevice::setSecurityIOCap(BLE_HS_IO_NO_INPUT_OUTPUT);
   NimBLEDevice::setSecurityAuth(true,false,true);
   auto *server=NimBLEDevice::createServer(); server->setCallbacks(new PeerCallbacks()); server->advertiseOnDisconnect(true);
-  bleHid=new NimBLEHIDDevice(server); bleHid->setManufacturer("iPhone Agent"); bleHid->setHidInfo(0,1);
+  bleHid=new NimBLEHIDDevice(server); bleHid->setManufacturer("iPhone Use"); bleHid->setHidInfo(0,1);
   // HOGP requires a populated seven-byte PnP ID, not an empty characteristic.
   bleHid->setPnp(1,0xffff,1,1); // Development identity; no borrowed commercial keyboard ID.
   // Use the descriptors registered by the existing USB devices, unchanged.

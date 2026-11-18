@@ -29,7 +29,7 @@ CLI 与 MCP 自动复用同一配置目录的 daemon。`ESP32AGENT_HOME` 可指�
 
 PC控制使用 `hardware/serial_hid`。固件构建、共享动作的设计原因和USB引导配对见 [板端双HID说明](../../hardware/serial_hid/doc/usb-ble-hid.md)；原 `hardware/hid_bridge` 仅保留为历史固件及离线协议测试。使用BLE前先在手机完成目标设备配对并确认BLE就绪，电脑本身无需蓝牙配对。
 
-新固件中的 USB/BLE 设备名为 `iPhone Agent HID`。命名变更只完成了源码修改和构建，尚未刷写；旧固件或手机缓存仍可能显示 `Handsy Serial HID` / `Handsy-BLE-Lab`。按已核实的设备身份操作，不因名称不同直接删除配对；`device info` 的 `device_id` 用于核对板子，显示名称不能代替设备身份。CLI 命令、MCP 工具和环境变量名称不随项目改名改变。项目目录及 AirPlay 的切换状态见[项目说明](../../README.md)。
+新固件中的 USB/BLE 设备名为 `iPhone Use HID`。本机已于2026-11-18刷写并重新配对，手机已显示新名称；其他旧固件或手机缓存仍可能显示 `iPhone Agent HID` / `Handsy Serial HID` / `Handsy-BLE-Lab`。按已核实的设备身份操作，不因名称不同直接删除配对；`device info` 的 `device_id` 用于核对板子，显示名称不能代替设备身份。CLI 命令、MCP 工具和环境变量名称不随项目改名改变。项目目录及 AirPlay 的切换状态见[项目说明](../../README.md)。
 
 ## 输出选择与接线
 
