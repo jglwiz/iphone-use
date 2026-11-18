@@ -37,3 +37,6 @@ hardware/tests/sim/screen.h264
 # Local serial validation build and evidence
 .runtime/
 task/serial-control/*.exe
+
+# Local task plans and experiments
+/task/
