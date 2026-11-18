@@ -12,7 +12,9 @@ USB/BLE共用仓库中的 `hardware/shared_hid/actions.h`、`abs_mouse.h` 和pac
 
 键盘保留USB原生行为；BLE在同一接口下采用实测的先建立修饰键、后发送字符、按顺序释放字符与修饰键的节奏。每条BLE type限制16字节，由daemon拆分，避免同步处理越过串口命令时限。兼容动作语义不等于两个传输有相同延迟。
 
-2026-11-18正式测试页验收发现：English (US) 下USB的大写及下划线未按预期输入，显式Shift组合也失败。此前USB基本ASCII验收不能作为修饰键覆盖证明；两路发送节奏差异尚未证实为根因。用户选择本轮记录问题、不改固件；复现与验证边界见[正式页面验收记录](../../tests/hid_acceptance/doc/validation.md)。
+USB接口由首个`USBHID`对象决定，后创建的键盘对象不会覆盖它。`0.3.1-serial`将首个通用发送器显式声明为KEYBOARD协议，保留键盘报告内容、原生USB发送时序、BLE时序及动作API。此项接口修正的实验与正式回归见[USB Shift调查](usb-keyboard-shift.md)。
+
+2026-11-18正式测试页首轮发现USB大写、下划线及显式Shift失败，最初按用户范围只记录。后续获准调查后，同一故障也在BLE复现；重连后原生方式又恢复。因此不能用早期USB基本ASCII验收证明Shift一直正常，也不能把200ms延迟或接口声明单独称为间歇性故障的已证实根因。首轮记录见[正式页面验收](../../tests/hid_acceptance/doc/validation.md)，后续结论以本模块调查为准。
 
 ## 单路发送与恢复
 

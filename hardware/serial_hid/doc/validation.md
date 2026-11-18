@@ -2,6 +2,8 @@
 
 日期：2026-11-17。正式入口为 `hardware/serial_hid`，版本 `0.3.0-serial`；PC 始终通过串口连接 ESP32，显式选择 USB HID 或标准 BLE HID 向 iPhone 输出。CLI/MCP 动作 API 不变。配置与操作语义见 [串口控制说明](../../../cli/doc/serial-control.md)。
 
+后续的`0.3.1-serial`接口修正、Shift复发及对照证据单独记录于[USB Shift调查](usb-keyboard-shift.md)。下文保留11月17日的局部验收事实，不作为以后每次连接的输入保证。
+
 ## 实现与测试范围
 
 先完成独立原型，再整合正式代码。USB/BLE 共用 `shared_hid/actions.h`、`abs_mouse.h` 和 pace；BLE Report Map 直接由 USB 对象的描述符组成，不另建坐标或点击算法。实读 Report Map 为191字节，输入报告为：键盘1/8字节、Consumer 4/2字节、绝对位置10/5字节、独立按钮11/1字节、滚轮12/4字节。

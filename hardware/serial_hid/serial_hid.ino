@@ -31,7 +31,10 @@ String lastBLE[13];
 String bootId, deviceId;
 NimBLEHIDDevice *bleHid;
 NimBLECharacteristic *inputs[13] = {};
-USBHID usbSender;
+// Arduino latches the interface protocol in the first USBHID constructor.
+// This sender is constructed before usbKeyboard: declare the keyboard protocol
+// here as well so the composite interface exposes keyboard boot capability.
+USBHID usbSender(HID_ITF_PROTOCOL_KEYBOARD);
 USBHIDKeyboard usbKeyboard;
 USBHIDConsumerControl usbConsumer;
 constexpr unsigned REQUIRED = (1<<1)|(1<<4)|(1<<10)|(1<<11)|(1<<12);
@@ -161,7 +164,7 @@ class SuspendCallbacks : public NimBLECharacteristicCallbacks {
 };
 String statusJSON() {
   cJSON *j=cJSON_CreateObject();
-  cJSON_AddStringToObject(j,"fw","0.3.0-serial");
+  cJSON_AddStringToObject(j,"fw","0.3.1-serial");
   cJSON_AddStringToObject(j,"name","Handsy Serial HID");
   cJSON_AddStringToObject(j,"boot_id",bootId.c_str());
   cJSON_AddStringToObject(j,"device_id",deviceId.c_str());

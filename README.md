@@ -63,7 +63,7 @@ USB 模式下，开发板的独立串口口接 PC，原生 USB/OTG 口接 iPhone
 | 芯片与存储 | ESP32-S3 revision 0.2，16 MB Flash、8 MB PSRAM；容量对应 N16R8，完整模组订货型号尚未核对丝印 |
 | PC 串口 | 当前为 COM24，115200、8N1；端口号不是永久设备身份 |
 | 手机设置 | 辅助触控开启；精确 ASCII 测试临时使用 English (US)，结束恢复豆包中文输入法 |
-| 双 HID 固件 | `hardware/serial_hid`，版本 `0.3.0-serial` |
+| 双 HID 固件 | `hardware/serial_hid`，版本 `0.3.1-serial`；[Shift调查与验证边界](hardware/serial_hid/doc/usb-keyboard-shift.md) |
 | 构建依赖 | ESP32 Arduino 3.3.12、NimBLE-Arduino 2.3.8 |
 | 画面服务 | Windows 上现有 UxPlay / HTTP 取帧服务；当前 `/frame` 地址为 `http://127.0.0.1:8892/frame` |
 
