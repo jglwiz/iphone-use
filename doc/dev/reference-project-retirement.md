@@ -24,7 +24,7 @@
 - 静止实机：CLI/MCP均返回原frame_id `a6a957878b104d9c9e79f2b60382ec97:3216`、frame_time `1794973921.426`，帧龄约17秒，`observation_only`、`after_action=false`。初次等待仍有系统画面变化产生真实新帧，没有把那次误算为静止通过。
 - 旧用户Startup `iPhone Backend.lnk` 已核实目标、备份后移除，替换为 `iPhone Use Capture.lnk`，仅指向主项目`.venv`和capture模块。未重启Windows验证登录；新服务实际冷启动与人工恢复投屏已完成。
 
-工作区本地证据在 `.runtime/iphone-use-migration/`；任务清单在本项目忽略的 `task/serial-control/deprecate-reference-project-plan.md`。这些本机产物不作为可分发运行依赖。
+原始回归证据在工作区 `.runtime/iphone-use-migration/`。在其他电脑上部署或重新验证时，使用 [Windows 环境说明](../user/windows-setup.md) 和 [正式 HID 验收入口](../../hardware/tests/hid_acceptance/README.md)。
 
 ## 保留的问题与清理边界
 

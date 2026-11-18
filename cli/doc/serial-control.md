@@ -104,7 +104,7 @@ BLE 的同步 type 命令最多 16 字节，daemon 自动分块，避免超过�
 
 连接与画面年龄分别处理：来源不可达、204 无帧、错误 HTTP 状态或无效帧元数据仍报错，不用缓存掩盖来源故障。来源显式发送 `X-Mirroring-State: disconnected` 时报告投屏断开。现有服务没有可靠的手机连接事件，因此有效旧快照返回 `source_state=available`、`mirroring_state=unknown`，年龄超过五秒只标记 `freshness=unchanged_or_stale`，不推断手机已断开或仍连接。仅凭该服务保留的旧快照无法完全区分正常静止与未报告的断开。
 
-HTTP 图像源支持原 screenshot 与 MJPEG 输出；不提供 H.264 与手机音频，相应 API 明确报不支持。现有 UxPlay/取帧继续运行，不在 CLI 内重启。新机器仍需单独准备画面服务；其独立迁移不属于本轮输入通道实现。
+HTTP 图像源支持原 screenshot 与 MJPEG 输出；不提供 H.264 与手机音频，相应 API 明确报不支持。CLI 不管理 UxPlay 或取帧进程。新机器按 [Windows 环境说明](../../doc/user/windows-setup.md) 配置独立画面服务。
 
 ## 已验证范围
 
@@ -119,10 +119,10 @@ HTTP 图像源支持原 screenshot 与 MJPEG 输出；不提供 H.264 与手机�
 | 手机端 USB 拔线 | PC 串口保留，纯 BLE 完成定位、点击、滚轮、键盘、按压和拖动；测试期 USB 调用128不变，BLE报告214→325 |
 | 静止截图 | CLI/MCP 返回超过8秒的原帧时间/ID，标记 observation_only、after_action=false，没有伪造操作后新帧 |
 
-本机任务目录中的测试网页是本地验收工具，用于观察可信 DOM 事件、计数和文字；不是正式控制服务的运行依赖，日常控制手机 App 不需要启动它。正式固件和 daemon 不依赖 task/lab，冻结的原型仅保存实验依据。
+需要验证真实输入效果时，使用 [正式 HID 验收页](../../hardware/tests/hid_acceptance/README.md) 查看可信 DOM 事件、计数和实际文字。它独立于日常控制服务。
 
 构建哈希、故障诊断、实机步骤与边界统一保存在 [板端验收记录](../../hardware/serial_hid/doc/validation.md)。原始截图、串口日志、实验计划和完整Flash保存在本机，不是正式运行或构建依赖，也不纳入本次提交。
 
-最后一次实机验收保持 BLE 模式、原输入法、held=0，正式 daemon 与投屏服务继续运行，临时桥及测试页服务器已停止；运行配置目录为工作区 `.runtime/serial-usb-cli/`。目录名称来自USB首轮，不决定当前输出。下一次启动仍须显式设置 `ESP32AGENT_HID_OUTPUT=ble`。
+2026-11-17 手机端 USB 拔线验收结束时保留 BLE 输出。次日 [独立画面迁移回归](../../doc/dev/reference-project-retirement.md) 结束后恢复 USB 输出。运行目录名称不决定通路，以当前环境变量与 `device info` 报告为准。
 
 尚未覆盖动作发送中途断链、全屏边缘、物理旋转、锁屏、长期稳定性及跨设备/系统完整兼容性；不能把有界实测扩大成上述保证。
